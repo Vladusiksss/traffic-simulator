@@ -1,0 +1,3720 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>T-Drive Analyzer - Аналіз водійської поведінки</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: #1a1a24;
+            --bg-hover: #22222e;
+            --border: #2a2a3a;
+            --text-primary: #f0f0f5;
+            --text-secondary: #8888a0;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --eco: #10b981;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 20px 0;
+            margin-bottom: 24px;
+        }
+
+        header h1 {
+            font-size: 1.75rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        header h1 span {
+            background: linear-gradient(135deg, var(--accent), #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .main-grid {
+            display: grid;
+            grid-template-columns: 420px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1200px) {
+            .main-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-header svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent);
+        }
+
+        /* File Upload */
+        .upload-zone {
+            border: 2px dashed var(--border);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--bg-secondary);
+        }
+
+        .upload-zone:hover {
+            border-color: var(--accent);
+            background: var(--bg-hover);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .upload-zone svg {
+            width: 48px;
+            height: 48px;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+
+        .upload-zone p {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .upload-zone input {
+            display: none;
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: none;
+            width: 100%;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* Form Controls */
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            transition: border-color 0.2s;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        select.form-control {
+            cursor: pointer;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider-container input[type="range"] {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: var(--accent);
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .slider-value {
+            min-width: 50px;
+            text-align: right;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .stat-unit {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+
+        .stat-change {
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+
+        .stat-change.positive { color: var(--success); }
+        .stat-change.negative { color: var(--danger); }
+
+        /* Charts */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 900px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .chart-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .chart-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 280px;
+        }
+
+        /* Table */
+        .table-container {
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        tr:hover td {
+            background: var(--bg-hover);
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-aggressive {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+        }
+
+        .badge-normal {
+            background: rgba(34, 197, 94, 0.2);
+            color: var(--success);
+        }
+
+        .badge-cautious {
+            background: rgba(59, 130, 246, 0.2);
+            color: var(--accent);
+        }
+
+        .badge-eco {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--eco);
+        }
+
+        /* Log */
+        .log-container {
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 12px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.8rem;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            color: var(--text-secondary);
+        }
+
+        .log-entry.success { color: var(--success); }
+        .log-entry.error { color: var(--danger); }
+        .log-entry.warning { color: var(--warning); }
+
+        /* Tabs */
+        .tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: 20px;
+            background: var(--bg-secondary);
+            padding: 4px;
+            border-radius: 10px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 10px 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Results Panel */
+        .results-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .result-section {
+            margin-bottom: 24px;
+        }
+
+        .result-section:last-child {
+            margin-bottom: 0;
+        }
+
+        .result-section h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .result-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        .result-item .label {
+            color: var(--text-secondary);
+        }
+
+        .result-item .value {
+            font-weight: 600;
+        }
+
+        /* Driver Detail Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            font-size: 1.25rem;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 1.5rem;
+            padding: 4px;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        /* Progress */
+        .progress-bar {
+            height: 4px;
+            background: var(--border);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+
+        /* Simulation Info */
+        .simulation-info {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+
+        .simulation-info h4 {
+            font-size: 0.9rem;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .simulation-info p {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        /* Dataset Info */
+        .dataset-info {
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .dataset-info h4 {
+            font-size: 0.85rem;
+            color: var(--eco);
+            margin-bottom: 8px;
+        }
+
+        .dataset-info-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            font-size: 0.8rem;
+        }
+
+        .dataset-info-item {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .dataset-info-item .label {
+            color: var(--text-secondary);
+        }
+
+        .dataset-info-item .value {
+            color: var(--text-primary);
+            font-weight: 500;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state h3 {
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-secondary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Delete Button */
+        .btn-danger {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--danger);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            width: auto;
+            font-size: 0.8rem;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+        }
+
+        /* Comparison Panel */
+        .comparison-panel {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .comparison-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .comparison-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .comparison-toggle {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-secondary);
+            padding: 4px;
+            border-radius: 8px;
+        }
+
+        .comparison-toggle button {
+            padding: 6px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .comparison-toggle button.active {
+            background: var(--accent);
+            color: white;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .comparison-column {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .comparison-column.real {
+            border-left: 3px solid var(--success);
+        }
+
+        .comparison-column.simulated {
+            border-left: 3px solid var(--warning);
+        }
+
+        .comparison-column h4 {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .comparison-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .comparison-item:last-child {
+            border-bottom: none;
+        }
+
+        .comparison-item .label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+        }
+
+        .comparison-item .value {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+
+        .comparison-item .value.positive {
+            color: var(--success);
+        }
+
+        .comparison-item .value.negative {
+            color: var(--danger);
+        }
+
+        .comparison-diff {
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.2);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+
+        .comparison-diff h5 {
+            font-size: 0.8rem;
+            color: var(--accent);
+            margin-bottom: 8px;
+        }
+
+        .diff-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .diff-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+        }
+
+        .diff-item .change {
+            font-weight: 600;
+        }
+
+        .diff-item .change.up {
+            color: var(--success);
+        }
+
+        .diff-item .change.down {
+            color: var(--danger);
+        }
+
+        /* Export Modal */
+        .export-section {
+            margin-bottom: 20px;
+        }
+
+        .export-section h4 {
+            font-size: 0.9rem;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .checkbox-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .checkbox-item input[type="checkbox"] {
+            accent-color: var(--accent);
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-item label {
+            color: var(--text-primary);
+            font-size: 0.85rem;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .checkbox-item .hint {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .radio-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 16px;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+        }
+
+        .radio-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .radio-item.selected {
+            border-color: var(--accent);
+            background: rgba(59, 130, 246, 0.1);
+        }
+
+        .radio-item input[type="radio"] {
+            accent-color: var(--accent);
+        }
+
+        .export-preview {
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+
+        .export-preview h5 {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .export-preview pre {
+            font-family: 'Consolas', monospace;
+            font-size: 0.75rem;
+            color: var(--text-primary);
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .export-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border-radius: 8px;
+            margin-top: 16px;
+        }
+
+        .export-summary .info {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .export-summary .count {
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        /* Confirm Dialog */
+        .confirm-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            z-index: 1001;
+            min-width: 320px;
+            text-align: center;
+        }
+
+        .confirm-dialog h4 {
+            margin-bottom: 12px;
+        }
+
+        .confirm-dialog p {
+            color: var(--text-secondary);
+            margin-bottom: 20px;
+        }
+
+        .confirm-dialog .btn-group {
+            flex-direction: row;
+            justify-content: center;
+        }
+
+        .confirm-dialog .btn {
+            width: auto;
+            min-width: 100px;
+        }
+
+        /* Adaptive Simulation Indicator */
+        .adaptive-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: var(--eco);
+            margin-top: 8px;
+        }
+
+        .adaptive-indicator svg {
+            width: 14px;
+            height: 14px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 32px; height: 32px; color: var(--accent);">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                </svg>
+                <span>T-Drive Analyzer</span> - Аналіз водійської поведінки
+            </h1>
+        </div>
+    </header>
+
+    <main class="container">
+        <div class="main-grid">
+            <!-- Left Panel -->
+            <aside>
+                <!-- File Upload -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17,8 12,3 7,8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        Завантаження даних
+                    </div>
+                    <div class="upload-zone" id="uploadZone">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="12" y1="18" x2="12" y2="12"/>
+                            <polyline points="9,15 12,12 15,15"/>
+                        </svg>
+                        <p>Перетягніть .txt файли сюди<br>або натисніть для вибору</p>
+                        <input type="file" id="fileInput" multiple accept=".txt">
+                    </div>
+                    <div class="progress-bar hidden" id="progressBar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+
+                <!-- Dataset Stats (Dynamic) -->
+                <div class="card hidden" id="datasetStatsCard">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+                            <polyline points="3.27,6.96 12,12.01 20.73,6.96"/>
+                            <line x1="12" y1="22.08" x2="12" y2="12"/>
+                        </svg>
+                        Характеристики датасету
+                    </div>
+                    <div class="dataset-info">
+                        <h4>Базові параметри (враховуються при симуляції)</h4>
+                        <div class="dataset-info-grid" id="datasetInfoGrid">
+                            <!-- Dynamic content -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Simulation Controls -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                        </svg>
+                        Моделювання умов
+                    </div>
+
+                    <div class="form-group">
+                        <label>Погодні умови</label>
+                        <select class="form-control" id="weather">
+                            <option value="clear">Ясно</option>
+                            <option value="cloudy">Хмарно</option>
+                            <option value="fog">Туман</option>
+                            <option value="rain">Дощ</option>
+                            <option value="heavy_rain">Сильний дощ</option>
+                            <option value="snow">Сніг</option>
+                            <option value="blizzard">Заметіль</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Інтенсивність опадів: <span id="precipitationValue">0%</span></label>
+                        <div class="slider-container">
+                            <input type="range" id="precipitation" min="0" max="100" value="0">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Стан покриття</label>
+                        <select class="form-control" id="roadSurface">
+                            <option value="dry">Сухе</option>
+                            <option value="wet">Мокре</option>
+                            <option value="puddles">Калюжі</option>
+                            <option value="snow_covered">Засніжене</option>
+                            <option value="icy">Ожеледь</option>
+                            <option value="black_ice">Чорний лід</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Рівень трафіку: <span id="trafficValue">50%</span></label>
+                        <div class="slider-container">
+                            <input type="range" id="traffic" min="0" max="100" value="50">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Видимість: <span id="visibilityValue">100%</span></label>
+                        <div class="slider-container">
+                            <input type="range" id="visibility" min="10" max="100" value="100">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Час доби</label>
+                        <select class="form-control" id="timeOfDay">
+                            <option value="day">День</option>
+                            <option value="dawn">Світанок</option>
+                            <option value="dusk">Сутінки</option>
+                            <option value="night">Ніч</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-primary" id="simulateBtn" disabled>
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 18px; height: 18px;">
+                            <polygon points="5,3 19,12 5,21 5,3"/>
+                        </svg>
+                        Запустити симуляцію
+                    </button>
+
+                    <div class="adaptive-indicator hidden" id="adaptiveIndicator">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+                        </svg>
+                        <span>Адаптивне моделювання на основі вхідних даних</span>
+                    </div>
+
+                    <div class="simulation-info" id="simulationInfo" style="display: none;">
+                        <h4>Результат симуляції</h4>
+                        <p id="simulationResult"></p>
+                    </div>
+                </div>
+
+                <!-- Log -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                            <polyline points="14,2 14,8 20,8"/>
+                            <line x1="16" y1="13" x2="8" y2="13"/>
+                            <line x1="16" y1="17" x2="8" y2="17"/>
+                            <polyline points="10,9 9,9 8,9"/>
+                        </svg>
+                        Журнал
+                    </div>
+                    <div class="log-container" id="logContainer">
+                        <div class="log-entry">Система готова до роботи</div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="card">
+                    <div class="card-header">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <line x1="3" y1="9" x2="21" y2="9"/>
+                            <line x1="9" y1="21" x2="9" y2="9"/>
+                        </svg>
+                        Дії
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" id="generateDataBtn" disabled>
+                            Генерувати розширений датасет
+                        </button>
+                        <button class="btn btn-secondary" id="exportBtn" disabled>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                                <polyline points="7,10 12,15 17,10"/>
+                                <line x1="12" y1="15" x2="12" y2="3"/>
+                            </svg>
+                            Налаштувати експорт
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Right Panel -->
+            <section>
+                <!-- Stats -->
+                <div class="stats-grid" id="statsGrid">
+                    <div class="stat-card">
+                        <div class="stat-label">Точок GPS</div>
+                        <div class="stat-value" id="statPoints">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Водіїв</div>
+                        <div class="stat-value" id="statDrivers">0</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Сер. швидкість</div>
+                        <div class="stat-value"><span id="statAvgSpeed">0</span><span class="stat-unit">км/год</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Макс. швидкість</div>
+                        <div class="stat-value"><span id="statMaxSpeed">0</span><span class="stat-unit">км/год</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Сер. прискорення</div>
+                        <div class="stat-value"><span id="statAvgAccel">0</span><span class="stat-unit">м/с²</span></div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">Сегментів руху</div>
+                        <div class="stat-value" id="statSegments">0</div>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="tabs">
+                    <button class="tab active" data-tab="charts">Графіки</button>
+                    <button class="tab" data-tab="drivers">Аналіз водіїв</button>
+                    <button class="tab" data-tab="comparison">Порівняння</button>
+                    <button class="tab" data-tab="detailed">Детальні результати</button>
+                </div>
+
+                <!-- Charts Tab -->
+                <div class="tab-content active" id="chartsTab">
+                    <div class="charts-grid">
+                        <div class="chart-container">
+                            <div class="chart-title">Розподіл стилів водіння</div>
+                            <div class="chart-wrapper">
+                                <canvas id="styleChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <div class="chart-title">Розподіл швидкості</div>
+                            <div class="chart-wrapper">
+                                <canvas id="speedChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <div class="chart-title">Вплив дорожніх умов на швидкість</div>
+                            <div class="chart-wrapper">
+                                <canvas id="conditionsChart"></canvas>
+                            </div>
+                        </div>
+                        <div class="chart-container">
+                            <div class="chart-title">Розподіл прискорення</div>
+                            <div class="chart-wrapper">
+                                <canvas id="accelChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Drivers Tab -->
+                <div class="tab-content" id="driversTab">
+                    <div class="card">
+                        <div class="card-header">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                <circle cx="9" cy="7" r="4"/>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                            </svg>
+                            Індивідуальний аналіз водіїв
+                        </div>
+
+                        <div class="form-group" style="display: flex; gap: 12px; align-items: flex-end;">
+                            <div style="flex: 1;">
+                                <label>Пошук водія за ID</label>
+                                <input type="text" class="form-control" id="driverSearch" placeholder="Введіть ID водія...">
+                            </div>
+                            <button class="btn btn-danger btn-small" id="deleteSelectedBtn" disabled style="height: 42px;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                </svg>
+                                Видалити вибраних
+                            </button>
+                        </div>
+
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>
+                                            <input type="checkbox" id="selectAllDrivers" title="Вибрати всіх">
+                                        </th>
+                                        <th>ID водія</th>
+                                        <th>Стиль</th>
+                                        <th>Сер. швид.</th>
+                                        <th>Макс. швид.</th>
+                                        <th>Сер. приск.</th>
+                                        <th>Різкі маневри</th>
+                                        <th>Сегментів</th>
+                                        <th>Дії</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="driversTable">
+                                    <tr>
+                                        <td colspan="9" class="empty-state">
+                                            Завантажте дані для аналізу водіїв
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Tab -->
+                <div class="tab-content" id="comparisonTab">
+                    <div class="comparison-panel">
+                        <div class="comparison-header">
+                            <h3>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 20px; height: 20px; color: var(--accent);">
+                                    <line x1="18" y1="20" x2="18" y2="10"/>
+                                    <line x1="12" y1="20" x2="12" y2="4"/>
+                                    <line x1="6" y1="20" x2="6" y2="14"/>
+                                </svg>
+                                Порівняння реальних та змодельованих даних
+                            </h3>
+                            <div class="comparison-toggle">
+                                <button class="active" data-view="side-by-side">Паралельно</button>
+                                <button data-view="overlay">Накладення</button>
+                            </div>
+                        </div>
+
+                        <div id="comparisonContent">
+                            <div class="empty-state">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                    <path d="M9 17H7A5 5 0 0 1 7 7h2"/>
+                                    <path d="M15 7h2a5 5 0 1 1 0 10h-2"/>
+                                    <line x1="8" y1="12" x2="16" y2="12"/>
+                                </svg>
+                                <h3>Немає даних для порівняння</h3>
+                                <p>Завантажте дані та запустіть симуляцію для перегляду порівняння</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Results Tab -->
+                <div class="tab-content" id="detailedTab">
+                    <div class="results-panel">
+                        <div class="result-section">
+                            <h3>Загальна статистика</h3>
+                            <div class="result-grid" id="generalStats">
+                                <div class="result-item">
+                                    <span class="label">Завантажте дані для перегляду результатів</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="result-section">
+                            <h3>Аналіз стилів водіння</h3>
+                            <div class="result-grid" id="styleStats">
+                            </div>
+                        </div>
+
+                        <div class="result-section">
+                            <h3>Аналіз швидкісного режиму</h3>
+                            <div class="result-grid" id="speedStats">
+                            </div>
+                        </div>
+
+                        <div class="result-section">
+                            <h3>Аналіз прискорення та гальмування</h3>
+                            <div class="result-grid" id="accelStats">
+                            </div>
+                        </div>
+
+                        <div class="result-section">
+                            <h3>Аналіз маневрування</h3>
+                            <div class="result-grid" id="maneuverStats">
+                            </div>
+                        </div>
+
+                        <div class="result-section">
+                            <h3>Порівняння з еталонними показниками</h3>
+                            <div class="result-grid" id="benchmarkStats">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal-overlay" id="deleteConfirmModal">
+        <div class="confirm-dialog">
+            <h4>Підтвердження видалення</h4>
+            <p id="deleteConfirmText">Ви впевнені, що хочете видалити вибраних водіїв?</p>
+            <div class="btn-group">
+                <button class="btn btn-secondary" id="cancelDeleteBtn">Скасувати</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">Видалити</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Driver Detail Modal -->
+    <div class="modal-overlay" id="driverModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>Детальний аналіз водія: <span id="modalDriverId"></span></h2>
+                <button class="modal-close" id="closeModal">&times;</button>
+            </div>
+            <div id="modalBody">
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Configuration Modal -->
+    <div class="modal-overlay" id="exportModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 24px; height: 24px; color: var(--accent); margin-right: 8px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7,10 12,15 17,10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Налаштування експорту
+                </h2>
+                <button class="modal-close" id="closeExportModal">&times;</button>
+            </div>
+            
+            <div class="export-section">
+                <h4>Формат файлу</h4>
+                <div class="radio-group" id="formatGroup">
+                    <div class="radio-item selected" data-format="json">
+                        <input type="radio" name="exportFormat" value="json" checked>
+                        <div>
+                            <label>JSON</label>
+                            <div class="hint">Структуровані дані з метаданими</div>
+                        </div>
+                    </div>
+                    <div class="radio-item" data-format="csv">
+                        <input type="radio" name="exportFormat" value="csv">
+                        <div>
+                            <label>CSV</label>
+                            <div class="hint">Табличний формат для Excel</div>
+                        </div>
+                    </div>
+                    <div class="radio-item" data-format="jsonl">
+                        <input type="radio" name="exportFormat" value="jsonl">
+                        <div>
+                            <label>JSONL</label>
+                            <div class="hint">По рядку на запис (для ML)</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h4>Тип даних для експорту</h4>
+                <div class="radio-group" id="dataTypeGroup">
+                    <div class="radio-item selected" data-type="processed">
+                        <input type="radio" name="dataType" value="processed" checked>
+                        <div>
+                            <label>Оброблені сегменти</label>
+                            <div class="hint">Розраховані параметри руху</div>
+                        </div>
+                    </div>
+                    <div class="radio-item" data-type="drivers">
+                        <input type="radio" name="dataType" value="drivers">
+                        <div>
+                            <label>Аналіз водіїв</label>
+                            <div class="hint">Агреговані дані по водіях</div>
+                        </div>
+                    </div>
+                    <div class="radio-item" data-type="simulated">
+                        <input type="radio" name="dataType" value="simulated">
+                        <div>
+                            <label>Симульовані дані</label>
+                            <div class="hint">Результати моделювання</div>
+                        </div>
+                    </div>
+                    <div class="radio-item" data-type="augmented">
+                        <input type="radio" name="dataType" value="augmented">
+                        <div>
+                            <label>Розширений датасет</label>
+                            <div class="hint">Всі сценарії</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h4>Поля для експорту</h4>
+                <div class="checkbox-group" id="fieldsGroup">
+                    <!-- Dynamic fields based on data type -->
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h4>Додаткові опції</h4>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="includeMetadata" checked>
+                        <label for="includeMetadata">Включити метадані</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="includeTimestamp" checked>
+                        <label for="includeTimestamp">Додати timestamp</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="prettyPrint" checked>
+                        <label for="prettyPrint">Форматований вивід (JSON)</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="limitRecords">
+                        <label for="limitRecords">Обмежити записи</label>
+                    </div>
+                </div>
+                <div class="form-group hidden" id="recordLimitGroup" style="margin-top: 12px;">
+                    <label>Максимальна кількість записів</label>
+                    <input type="number" class="form-control" id="recordLimit" value="1000" min="1" max="100000">
+                </div>
+            </div>
+
+            <div class="export-section">
+                <h4>Структура JSON (для JSON формату)</h4>
+                <div class="radio-group" id="structureGroup">
+                    <div class="radio-item selected" data-structure="nested">
+                        <input type="radio" name="jsonStructure" value="nested" checked>
+                        <div>
+                            <label>Вкладена</label>
+                            <div class="hint">summary + data[]</div>
+                        </div>
+                    </div>
+                    <div class="radio-item" data-structure="flat">
+                        <input type="radio" name="jsonStructure" value="flat">
+                        <div>
+                            <label>Плоска</label>
+                            <div class="hint">Тільки масив даних</div>
+                        </div>
+                    </div>
+                    <div class="radio-item" data-structure="grouped">
+                        <input type="radio" name="jsonStructure" value="grouped">
+                        <div>
+                            <label>Згрупована</label>
+                            <div class="hint">Групування по водіях</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="export-preview">
+                <h5>Попередній перегляд структури</h5>
+                <pre id="exportPreview">// Виберіть опції для перегляду</pre>
+            </div>
+
+            <div class="export-summary">
+                <div class="info">
+                    Буде експортовано: <span class="count" id="exportCount">0</span> записів
+                </div>
+                <button class="btn btn-primary" id="doExportBtn" style="width: auto; padding: 10px 24px;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 16px; height: 16px;">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                        <polyline points="7,10 12,15 17,10"/>
+                        <line x1="12" y1="15" x2="12" y2="3"/>
+                    </svg>
+                    Експортувати
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================
+        // DATA STORAGE
+        // ============================================================
+        
+        let rawData = [];
+        let processedData = [];
+        let augmentedData = [];
+        let simulatedData = [];
+        let driverAnalysis = {};
+        let realDataStats = null;
+        let simulatedDataStats = null;
+        let selectedDrivers = new Set();
+        let driversToDelete = [];
+        let charts = {};
+        let datasetThresholds = {
+    speedP25: 0, speedP75: 0,
+    accelP25: 0, accelP75: 0,
+    sharpP75: 0
+};
+        
+        // Dataset characteristics for adaptive simulation
+        let datasetProfile = {
+            avgSpeed: 0,
+            maxSpeed: 0,
+            minSpeed: 0,
+            speedStd: 0,
+            avgAccel: 0,
+            maxAccel: 0,
+            accelStd: 0,
+            percentile95Speed: 0,
+            percentile5Speed: 0,
+            urbanRatio: 0,      // Ratio of low-speed segments
+            highwayRatio: 0,    // Ratio of high-speed segments
+            aggressiveRatio: 0  // Ratio of aggressive maneuvers
+        };
+
+        // ============================================================
+        // CONSTANTS
+        // ============================================================
+        
+        const ROAD_CONDITIONS = {
+            dry: { speedFactor: 1.00, accelFactor: 1.00, label: "Суха дорога", color: "#8B7355" },
+            wet: { speedFactor: 0.85, accelFactor: 0.75, label: "Мокра дорога", color: "#4A7A9C" },
+            rain: { speedFactor: 0.70, accelFactor: 0.60, label: "Сильний дощ", color: "#2C5F8A" },
+            snow: { speedFactor: 0.50, accelFactor: 0.45, label: "Сніг", color: "#E8E8E8" },
+            ice: { speedFactor: 0.35, accelFactor: 0.30, label: "Лід", color: "#C0E0FF" },
+            night: { speedFactor: 0.80, accelFactor: 0.85, label: "Ніч", color: "#1a1a2e" }
+        };
+        
+        const WEATHER_FACTORS = {
+            clear: { speedFactor: 1.0, accelFactor: 1.0 },
+            cloudy: { speedFactor: 0.95, accelFactor: 0.95 },
+            fog: { speedFactor: 0.6, accelFactor: 0.7 },
+            rain: { speedFactor: 0.75, accelFactor: 0.65 },
+            heavy_rain: { speedFactor: 0.55, accelFactor: 0.5 },
+            snow: { speedFactor: 0.45, accelFactor: 0.4 },
+            blizzard: { speedFactor: 0.25, accelFactor: 0.25 }
+        };
+        
+        const SURFACE_FACTORS = {
+            dry: { speedFactor: 1.0, accelFactor: 1.0 },
+            wet: { speedFactor: 0.85, accelFactor: 0.75 },
+            puddles: { speedFactor: 0.7, accelFactor: 0.6 },
+            snow_covered: { speedFactor: 0.5, accelFactor: 0.45 },
+            icy: { speedFactor: 0.35, accelFactor: 0.3 },
+            black_ice: { speedFactor: 0.2, accelFactor: 0.15 }
+        };
+        
+        const TIME_FACTORS = {
+            day: { speedFactor: 1.0, accelFactor: 1.0 },
+            dawn: { speedFactor: 0.9, accelFactor: 0.92 },
+            dusk: { speedFactor: 0.85, accelFactor: 0.88 },
+            night: { speedFactor: 0.75, accelFactor: 0.8 }
+        };
+        
+        const STYLE_LABELS = {
+            aggressive: "Агресивний",
+            normal: "Нормальний",
+            cautious: "Обережний",
+            eco: "Еко"
+        };
+
+        // Export field definitions
+        const EXPORT_FIELDS = {
+            processed: [
+                { id: 'taxiId', label: 'ID водія', default: true },
+                { id: 'timestamp', label: 'Timestamp', default: true },
+                { id: 'latitude', label: 'Широта', default: true },
+                { id: 'longitude', label: 'Довгота', default: true },
+                { id: 'speedKmh', label: 'Швидкість (км/год)', default: true },
+                { id: 'acceleration', label: 'Прискорення (м/с²)', default: true },
+                { id: 'turnAngle', label: 'Кут повороту', default: false },
+                { id: 'distance', label: 'Дистанція (м)', default: false },
+                { id: 'timeDiff', label: 'Інтервал (с)', default: false },
+                { id: 'drivingStyle', label: 'Стиль водіння', default: true },
+                { id: 'bearing', label: 'Напрямок', default: false }
+            ],
+            drivers: [
+                { id: 'driverId', label: 'ID водія', default: true },
+                { id: 'style', label: 'Стиль водіння', default: true },
+                { id: 'avgSpeed', label: 'Середня швидкість', default: true },
+                { id: 'maxSpeed', label: 'Макс. швидкість', default: true },
+                { id: 'minSpeed', label: 'Мін. швидкість', default: false },
+                { id: 'speedStd', label: 'Стд. відхилення швидкості', default: false },
+                { id: 'avgAccel', label: 'С��реднє прискорення', default: true },
+                { id: 'maxAccel', label: 'Макс. прискорення', default: false },
+                { id: 'sharpManeuvers', label: 'Різкі маневри', default: true },
+                { id: 'segmentCount', label: 'Кількість сегментів', default: true },
+                { id: 'avgTurn', label: 'Середній кут повороту', default: false },
+                { id: 'maxTurn', label: 'Макс. кут повороту', default: false }
+            ],
+            simulated: [
+                { id: 'taxiId', label: 'ID водія', default: true },
+                { id: 'timestamp', label: 'Timestamp', default: true },
+                { id: 'latitude', label: 'Широта', default: true },
+                { id: 'longitude', label: 'Довгота', default: true },
+                { id: 'originalSpeedKmh', label: 'Оригінальна швидкість', default: true },
+                { id: 'speedKmh', label: 'Симульована швидкість', default: true },
+                { id: 'originalAcceleration', label: 'Оригінальне прискорення', default: true },
+                { id: 'acceleration', label: 'Симульоване прискорення', default: true },
+                { id: 'drivingStyle', label: 'Стиль водіння', default: true },
+                { id: 'simulationParams', label: 'Параметри симуляції', default: false }
+            ],
+            augmented: [
+                { id: 'taxiId', label: 'ID водія', default: true },
+                { id: 'scenario', label: 'Сценарій', default: true },
+                { id: 'weather', label: 'Погода', default: true },
+                { id: 'surface', label: 'Покриття', default: true },
+                { id: 'timeOfDay', label: 'Час доби', default: true },
+                { id: 'originalSpeedKmh', label: 'Оригінальна швидкість', default: true },
+                { id: 'speedKmh', label: 'Адаптована швидкість', default: true },
+                { id: 'originalAcceleration', label: 'Оригінальне прискорення', default: false },
+                { id: 'acceleration', label: 'Адаптоване прискорення', default: true },
+                { id: 'latitude', label: 'Широта', default: false },
+                { id: 'longitude', label: 'Довгота', default: false }
+            ]
+        };
+
+        // ============================================================
+        // UTILITY FUNCTIONS
+        // ============================================================
+        
+        function log(message, type = "") {
+            const container = document.getElementById('logContainer');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        function formatNumber(num, decimals = 1) {
+            return Number(num).toFixed(decimals);
+        }
+        
+        function haversineDistance(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const phi1 = lat1 * Math.PI / 180;
+            const phi2 = lat2 * Math.PI / 180;
+            const deltaPhi = (lat2 - lat1) * Math.PI / 180;
+            const deltaLambda = (lon2 - lon1) * Math.PI / 180;
+            
+            const a = Math.sin(deltaPhi / 2) ** 2 + Math.cos(phi1) * Math.cos(phi2) * Math.sin(deltaLambda / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            
+            return R * c;
+        }
+        
+        function calculateBearing(lat1, lon1, lat2, lon2) {
+            const phi1 = lat1 * Math.PI / 180;
+            const phi2 = lat2 * Math.PI / 180;
+            const lambda1 = lon1 * Math.PI / 180;
+            const lambda2 = lon2 * Math.PI / 180;
+            
+            const y = Math.sin(lambda2 - lambda1) * Math.cos(phi2);
+            const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(lambda2 - lambda1);
+            
+            return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+        }
+
+        function percentile(arr, p) {
+            const sorted = [...arr].sort((a, b) => a - b);
+            const idx = Math.floor((p / 100) * sorted.length);
+            return sorted[idx] || 0;
+        }
+
+        // ============================================================
+        // DATA PARSING
+        // ============================================================
+        
+        function parseGPSData(content, filename) {
+            const lines = content.trim().split('\n');
+            const data = [];
+            
+            for (const line of lines) {
+                const parts = line.split(',');
+                if (parts.length >= 4) {
+                    const [taxiId, timestamp, longitude, latitude] = parts;
+                    const date = new Date(timestamp.replace(' ', 'T'));
+                    
+                    if (!isNaN(date.getTime())) {
+                        data.push({
+                            taxiId: taxiId.trim(),
+                            timestamp: date,
+                            longitude: parseFloat(longitude),
+                            latitude: parseFloat(latitude),
+                            source: filename
+                        });
+                    }
+                }
+            }
+            
+            return data.sort((a, b) => {
+                if (a.taxiId !== b.taxiId) return a.taxiId.localeCompare(b.taxiId);
+                return a.timestamp - b.timestamp;
+            });
+        }
+
+        // ============================================================
+        // DATA PROCESSING
+        // ============================================================
+        
+        function calculateMovementParameters(data) {
+            const processed = [];
+            const grouped = {};
+            
+            for (const point of data) {
+                if (!grouped[point.taxiId]) grouped[point.taxiId] = [];
+                grouped[point.taxiId].push(point);
+            }
+            
+            for (const [taxiId, points] of Object.entries(grouped)) {
+                let prevSpeed = 0;
+                let prevBearing = 0;
+                
+                for (let i = 1; i < points.length; i++) {
+                    const prev = points[i - 1];
+                    const curr = points[i];
+                    
+                    const timeDiff = (curr.timestamp - prev.timestamp) / 1000;
+                    if (timeDiff <= 0 || timeDiff > 600) continue;
+                    
+                    const distance = haversineDistance(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+                    const speedMs = distance / timeDiff;
+                    const speedKmh = speedMs * 3.6;
+                    
+                    if (speedKmh > 200) continue;
+                    
+                    const acceleration = (speedKmh - prevSpeed) / 3.6 / timeDiff;
+                    const bearing = calculateBearing(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+                    let turnAngle = Math.abs(bearing - prevBearing);
+                    if (turnAngle > 180) turnAngle = 360 - turnAngle;
+                    
+                    processed.push({
+                        taxiId,
+                        timestamp: curr.timestamp,
+                        latitude: curr.latitude,
+                        longitude: curr.longitude,
+                        distance,
+                        timeDiff,
+                        speedKmh,
+                        acceleration: Math.max(-10, Math.min(10, acceleration)),
+                        bearing,
+                        turnAngle: i > 1 ? turnAngle : 0
+                    });
+                    
+                    prevSpeed = speedKmh;
+                    prevBearing = bearing;
+                }
+            }
+            
+            return processed;
+        }
+        
+        function classifyDrivingStyle(data) {
+    const grouped = {};
+    
+    for (const point of data) {
+        if (!grouped[point.taxiId]) grouped[point.taxiId] = [];
+        grouped[point.taxiId].push(point);
+    }
+    
+    driverAnalysis = {};
+
+    for (const [taxiId, points] of Object.entries(grouped)) {
+        const speeds = points.map(p => p.speedKmh);
+        const accels = points.map(p => Math.abs(p.acceleration));
+        const turns  = points.map(p => p.turnAngle);
+
+        const avgSpeed  = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+        const maxSpeed  = speeds.reduce((max, s) => s > max ? s : max, 0);
+        const minSpeed  = speeds.reduce((min, s) => s < min ? s : min, Infinity);
+        const speedStd  = Math.sqrt(speeds.reduce((sum, s) => sum + (s - avgSpeed) ** 2, 0) / speeds.length);
+
+        const avgAccel  = accels.reduce((a, b) => a + b, 0) / accels.length;
+        const maxAccel  = accels.reduce((max, a) => a > max ? a : max, 0);
+
+        const avgTurn   = turns.reduce((a, b) => a + b, 0) / turns.length;
+        const maxTurn   = turns.reduce((max, t) => t > max ? t : max, 0);
+
+        const sharpAccelCount  = accels.filter(a => a > 2.5).length;
+        const sharpTurnCount   = turns.filter(t => t > 45).length;
+        const hardBrakeCount   = points.map(p => p.acceleration).filter(a => a < -2.5).length;
+        const speedingCount    = speeds.filter(s => s > 80).length;
+        const sharpManeuversRatio = (sharpAccelCount + sharpTurnCount) / points.length;
+
+        // ── Бали по кожному критерію (0–100) ──────────────────────────
+
+        // 1. Середня швидкість: норма міста 25–55 км/год
+        //    <25 → дуже повільно (eco/cautious), 25–55 → норма, 55–75 → підвищена, >75 → висока
+        const speedScore = avgSpeed < 25  ? 10
+                         : avgSpeed < 40  ? 30
+                         : avgSpeed < 55  ? 50
+                         : avgSpeed < 70  ? 70
+                         : avgSpeed < 85  ? 85
+                         :                  100;
+
+        // 2. Середнє прискорення: <0.5 плавно, 0.5–1.2 норма, 1.2–2.0 активно, >2.0 різко
+        const accelScore = avgAccel < 0.4  ? 10
+                         : avgAccel < 0.8  ? 30
+                         : avgAccel < 1.2  ? 50
+                         : avgAccel < 1.8  ? 70
+                         : avgAccel < 2.5  ? 85
+                         :                   100;
+
+        // 3. Частота різких маневрів (відсоток від усіх точок)
+        const sharpScore = sharpManeuversRatio < 0.02 ? 10
+                         : sharpManeuversRatio < 0.05 ? 30
+                         : sharpManeuversRatio < 0.10 ? 55
+                         : sharpManeuversRatio < 0.18 ? 75
+                         :                              95;
+
+        // 4. Кількість різких гальмувань (< -2.5 м/с²)
+        const brakeRatio = hardBrakeCount / points.length;
+        const brakeScore = brakeRatio < 0.01 ? 10
+                         : brakeRatio < 0.03 ? 35
+                         : brakeRatio < 0.07 ? 60
+                         :                     90;
+
+        // 5. Швидкість понад 80 км/год (перевищення типового міського ліміту)
+        const speedingRatio = speedingCount / points.length;
+        const speedingScore = speedingRatio < 0.01 ? 5
+                            : speedingRatio < 0.05 ? 30
+                            : speedingRatio < 0.15 ? 60
+                            :                        90;
+
+        // 6. Варіативність швидкості (нерівномірність руху)
+        const stdScore = speedStd < 8   ? 10
+                       : speedStd < 15  ? 30
+                       : speedStd < 25  ? 55
+                       :                  80;
+
+        // ── Зважений агрегований бал ──────────────────────────────────
+        const aggrScore = (
+            speedScore    * 0.25 +
+            accelScore    * 0.25 +
+            sharpScore    * 0.20 +
+            brakeScore    * 0.15 +
+            speedingScore * 0.10 +
+            stdScore      * 0.05
+        );
+
+        // ── Класифікація ──────────────────────────────────────────────
+        let style;
+        if      (aggrScore >= 72) style = 'aggressive';
+        else if (aggrScore >= 42) style = 'normal';
+        else if (avgSpeed < 28 && avgAccel < 0.6) style = 'eco';
+        else                      style = 'cautious';
+
+        driverAnalysis[taxiId] = {
+            avgSpeed, maxSpeed, minSpeed, speedStd,
+            avgAccel, maxAccel,
+            avgTurn, maxTurn,
+            sharpManeuvers: sharpAccelCount + sharpTurnCount,
+            sharpManeuversRatio,
+            hardBrakeCount,
+            speedingCount,
+            speedScore, accelScore, sharpScore, brakeScore, speedingScore, stdScore,
+            aggrScore,
+            segmentCount: points.length,
+            style
+        };
+    }
+
+    return data.map(point => ({
+        ...point,
+        drivingStyle: driverAnalysis[point.taxiId]?.style || 'normal'
+    }));
+}
+
+        // ============================================================
+        // DATASET PROFILE CALCULATION
+        // ============================================================
+
+        function calculateDatasetProfile() {
+            if (processedData.length === 0) return;
+
+            const speeds = processedData.map(p => p.speedKmh);
+            const accels = processedData.map(p => Math.abs(p.acceleration));
+
+            const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+            const maxSpeed = Math.max(...speeds);
+            const minSpeed = Math.min(...speeds.filter(s => s > 0));
+            const speedStd = Math.sqrt(speeds.reduce((sum, s) => sum + (s - avgSpeed) ** 2, 0) / speeds.length);
+
+            const avgAccel = accels.reduce((a, b) => a + b, 0) / accels.length;
+            const maxAccel = Math.max(...accels);
+            const accelStd = Math.sqrt(accels.reduce((sum, a) => sum + (a - avgAccel) ** 2, 0) / accels.length);
+
+            // Calculate percentiles for more accurate adaptive scaling
+            const percentile95Speed = percentile(speeds, 95);
+            const percentile5Speed = percentile(speeds, 5);
+
+            // Calculate ratios for understanding driving context
+            const urbanRatio = speeds.filter(s => s < 40).length / speeds.length;
+            const highwayRatio = speeds.filter(s => s > 80).length / speeds.length;
+            const aggressiveRatio = accels.filter(a => a > 2).length / accels.length;
+
+            datasetProfile = {
+                avgSpeed,
+                maxSpeed,
+                minSpeed,
+                speedStd,
+                avgAccel,
+                maxAccel,
+                accelStd,
+                percentile95Speed,
+                percentile5Speed,
+                urbanRatio,
+                highwayRatio,
+                aggressiveRatio
+            };
+
+            // Update UI
+            updateDatasetInfoPanel();
+            document.getElementById('datasetStatsCard').classList.remove('hidden');
+            document.getElementById('adaptiveIndicator').classList.remove('hidden');
+        }
+
+        function updateDatasetInfoPanel() {
+            const grid = document.getElementById('datasetInfoGrid');
+            grid.innerHTML = `
+                <div class="dataset-info-item">
+                    <span class="label">Сер. швидкість</span>
+                    <span class="value">${formatNumber(datasetProfile.avgSpeed)} км/год</span>
+                </div>
+                <div class="dataset-info-item">
+                    <span class="label">Макс. швидкість</span>
+                    <span class="value">${formatNumber(datasetProfile.maxSpeed)} км/год</span>
+                </div>
+                <div class="dataset-info-item">
+                    <span class="label">95% перцентиль</span>
+                    <span class="value">${formatNumber(datasetProfile.percentile95Speed)} км/год</span>
+                </div>
+                <div class="dataset-info-item">
+                    <span class="label">Стд. відхилення</span>
+                    <span class="value">${formatNumber(datasetProfile.speedStd)} км/год</span>
+                </div>
+                <div class="dataset-info-item">
+                    <span class="label">Сер. прискорення</span>
+                    <span class="value">${formatNumber(datasetProfile.avgAccel, 2)} м/с²</span>
+                </div>
+                <div class="dataset-info-item">
+                    <span class="label">Макс. прискорення</span>
+                    <span class="value">${formatNumber(datasetProfile.maxAccel, 2)} м/с²</span>
+                </div>
+                <div class="dataset-info-item">
+                    <span class="label">Міський рух</span>
+                    <span class="value">${(datasetProfile.urbanRatio * 100).toFixed(0)}%</span>
+                </div>
+                <div class="dataset-info-item">
+                    <span class="label">Швидкісний рух</span>
+                    <span class="value">${(datasetProfile.highwayRatio * 100).toFixed(0)}%</span>
+                </div>
+            `;
+        }
+        
+        function augmentData(data) {
+            const conditions = Object.keys(ROAD_CONDITIONS);
+            const augmented = [];
+            
+            for (const condition of conditions) {
+                const factors = ROAD_CONDITIONS[condition];
+                for (const point of data) {
+                    augmented.push({
+                        ...point,
+                        roadCondition: condition,
+                        conditionLabel: factors.label,
+                        originalSpeedKmh: point.speedKmh,
+                        speedKmh: point.speedKmh * factors.speedFactor,
+                        originalAcceleration: point.acceleration,
+                        acceleration: point.acceleration * factors.accelFactor
+                    });
+                }
+            }
+            
+            return augmented;
+        }
+        
+        function calculateRealDataStats() {
+            if (processedData.length === 0) return;
+            
+            const speeds = processedData.map(p => p.speedKmh);
+            const accels = processedData.map(p => Math.abs(p.acceleration));
+            
+            realDataStats = {
+                avgSpeed: speeds.reduce((a, b) => a + b, 0) / speeds.length,
+                maxSpeed: Math.max(...speeds),
+                minSpeed: Math.min(...speeds),
+                avgAccel: accels.reduce((a, b) => a + b, 0) / accels.length,
+                maxAccel: Math.max(...accels),
+                totalSegments: processedData.length,
+                driverCount: Object.keys(driverAnalysis).length
+            };
+        }
+
+        // ============================================================
+        // ADAPTIVE SIMULATION (uses dataset profile)
+        // ============================================================
+        
+        function calculateAdaptiveSimulationFactors() {
+            const weather = document.getElementById('weather').value;
+            const precipitation = parseInt(document.getElementById('precipitation').value) / 100;
+            const surface = document.getElementById('roadSurface').value;
+            const traffic = parseInt(document.getElementById('traffic').value) / 100;
+            const visibility = parseInt(document.getElementById('visibility').value) / 100;
+            const timeOfDay = document.getElementById('timeOfDay').value;
+            
+            const weatherFactor = WEATHER_FACTORS[weather];
+            const surfaceFactor = SURFACE_FACTORS[surface];
+            const timeFactor = TIME_FACTORS[timeOfDay];
+            
+            const precipFactor = 1 - (precipitation * 0.4);
+            const visibilityFactor = visibility * 0.6 + 0.4;
+            const trafficFactor = 1 - (traffic * 0.5);
+            
+            // Base combined factors
+            let combinedSpeedFactor =
+                weatherFactor.speedFactor *
+                surfaceFactor.speedFactor *
+                timeFactor.speedFactor *
+                precipFactor *
+                visibilityFactor *
+                trafficFactor;
+            
+            let combinedAccelFactor =
+                weatherFactor.accelFactor *
+                surfaceFactor.accelFactor *
+                timeFactor.accelFactor *
+                precipFactor;
+
+            // ===== ADAPTIVE ADJUSTMENTS BASED ON DATASET PROFILE =====
+            
+            // 1. Adjust for urban vs highway driving patterns
+            // Urban drivers already drive slower, so weather impact is less dramatic
+            // Highway drivers need more significant speed reduction
+            const urbanWeight = datasetProfile.urbanRatio;
+            const highwayWeight = datasetProfile.highwayRatio;
+            
+            // Highway driving is more sensitive to bad conditions
+            if (highwayWeight > 0.3) {
+                combinedSpeedFactor *= (1 - (highwayWeight * 0.15 * (1 - combinedSpeedFactor)));
+            }
+            
+            // Urban driving is less affected (already cautious)
+            if (urbanWeight > 0.5) {
+                combinedSpeedFactor = combinedSpeedFactor * 0.7 + 0.3;
+            }
+
+            // 2. Adjust for aggressive driving patterns in dataset
+            // Aggressive drivers may not slow down as much in bad conditions
+            const aggressiveAdjustment = 1 + (datasetProfile.aggressiveRatio * 0.2);
+            combinedSpeedFactor *= aggressiveAdjustment;
+            combinedAccelFactor *= aggressiveAdjustment;
+
+            // 3. Apply speed variance - maintain relative distribution
+            // This ensures fast drivers stay proportionally faster than slow drivers
+            const normalizedSpeedStd = datasetProfile.speedStd / datasetProfile.avgSpeed;
+            const varianceFactor = 1 + (normalizedSpeedStd * 0.1);
+            
+            // 4. Calculate min/max bounds based on actual dataset
+            const minSpeedFactor = Math.max(0.1, datasetProfile.minSpeed / datasetProfile.avgSpeed * 0.8);
+            const maxSpeedFactor = Math.min(1.0, combinedSpeedFactor);
+
+            // Final bounded factors
+            combinedSpeedFactor = Math.max(minSpeedFactor, Math.min(maxSpeedFactor, combinedSpeedFactor));
+            combinedAccelFactor = Math.max(0.1, Math.min(1.0, combinedAccelFactor));
+            
+            return {
+                speedFactor: combinedSpeedFactor,
+                accelFactor: combinedAccelFactor,
+                varianceFactor,
+                params: { weather, precipitation, surface, traffic, visibility, timeOfDay },
+                adaptiveInfo: {
+                    urbanAdjustment: urbanWeight > 0.5,
+                    highwayAdjustment: highwayWeight > 0.3,
+                    aggressiveAdjustment: datasetProfile.aggressiveRatio > 0.1
+                }
+            };
+        }
+
+        function runSimulation() {
+            if (processedData.length === 0) {
+                log("Спочатку завантажте дані", "error");
+                return;
+            }
+            
+            const factors = calculateAdaptiveSimulationFactors();
+            
+            // Apply adaptive simulation with variance preservation
+            simulatedData = processedData.map(point => {
+                // Calculate individual speed factor that preserves relative position
+                const normalizedSpeed = (point.speedKmh - datasetProfile.avgSpeed) / (datasetProfile.speedStd || 1);
+                const individualVariance = 1 + (normalizedSpeed * 0.05 * factors.varianceFactor);
+                const finalSpeedFactor = factors.speedFactor * individualVariance;
+                
+                return {
+                    ...point,
+                    originalSpeedKmh: point.speedKmh,
+                    originalAcceleration: point.acceleration,
+                    speedKmh: Math.max(0, point.speedKmh * finalSpeedFactor),
+                    acceleration: point.acceleration * factors.accelFactor,
+                    simulated: true,
+                    simulationParams: factors.params
+                };
+            });
+            
+            // Calculate simulated statistics
+            const simulatedSpeeds = simulatedData.map(p => p.speedKmh);
+            const simulatedAccels = simulatedData.map(p => Math.abs(p.acceleration));
+            
+            simulatedDataStats = {
+                avgSpeed: simulatedSpeeds.reduce((a, b) => a + b, 0) / simulatedSpeeds.length,
+                maxSpeed: Math.max(...simulatedSpeeds),
+                minSpeed: Math.min(...simulatedSpeeds),
+                avgAccel: simulatedAccels.reduce((a, b) => a + b, 0) / simulatedAccels.length,
+                maxAccel: Math.max(...simulatedAccels),
+                totalSegments: simulatedData.length,
+                driverCount: Object.keys(driverAnalysis).length,
+                speedFactor: factors.speedFactor,
+                accelFactor: factors.accelFactor,
+                params: factors.params,
+                adaptiveInfo: factors.adaptiveInfo
+            };
+            
+            // Build adaptive info string
+            let adaptiveNote = "";
+            if (factors.adaptiveInfo.urbanAdjustment) {
+                adaptiveNote += " [Коригування для міського руху]";
+            }
+            if (factors.adaptiveInfo.highwayAdjustment) {
+                adaptiveNote += " [Коригування для швидкісного руху]";
+            }
+            
+            const resultText = `Швидкість: ${(factors.speedFactor * 100).toFixed(0)}% | Прискорення: ${(factors.accelFactor * 100).toFixed(0)}%${adaptiveNote}`;
+            
+            document.getElementById('simulationResult').textContent = resultText;
+            document.getElementById('simulationInfo').style.display = 'block';
+            
+            updateChartsWithSimulation(simulatedData, factors);
+            updateComparisonPanel();
+            
+            log(`Адаптивна симуляція завершена: швидкість ${(factors.speedFactor * 100).toFixed(0)}%, прискорення ${(factors.accelFactor * 100).toFixed(0)}%`, "success");
+        }
+
+        function getParamLabel(params) {
+            const weatherLabels = {
+                clear: 'Ясно', cloudy: 'Хмарно', fog: 'Туман',
+                rain: 'Дощ', heavy_rain: 'Злива', snow: 'Сніг', blizzard: 'Заметіль'
+            };
+            const surfaceLabels = {
+                dry: 'Сухе', wet: 'Мокре', puddles: 'Калюжі',
+                snow_covered: 'Сніг', icy: 'Лід', black_ice: 'Чорний лід'
+            };
+            const timeLabels = {
+                day: 'День', dawn: 'Світанок', dusk: 'Сутінки', night: 'Ніч'
+            };
+            
+            return `${weatherLabels[params.weather]}, ${surfaceLabels[params.surface]}, ${timeLabels[params.timeOfDay]}`;
+        }
+        
+        let overlayChart = null;
+
+        function renderOverlayView() {
+            const content = document.getElementById('comparisonContent');
+
+            if (!realDataStats || !simulatedDataStats) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9 17H7A5 5 0 0 1 7 7h2"/>
+                            <path d="M15 7h2a5 5 0 1 1 0 10h-2"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                        <h3>Немає даних для порівняння</h3>
+                        <p>Завантажте дані та запустіть симуляцію для перегляду порівняння</p>
+                    </div>`;
+                return;
+            }
+
+            // Build speed distribution bins for both datasets
+            const binSize = 10;
+            const numBins = 14;
+            const realBins = Array(numBins).fill(0);
+            const simBins  = Array(numBins).fill(0);
+
+            for (const p of processedData) {
+                const b = Math.min(Math.floor(p.speedKmh / binSize), numBins - 1);
+                realBins[b]++;
+            }
+            for (const p of simulatedData) {
+                const b = Math.min(Math.floor(p.speedKmh / binSize), numBins - 1);
+                simBins[b]++;
+            }
+            const labels = realBins.map((_, i) => `${i * binSize}–${(i + 1) * binSize}`);
+
+            // Accel bins
+            const accelBinSize = 1;
+            const numABins = 10;
+            const realABins = Array(numABins).fill(0);
+            const simABins  = Array(numABins).fill(0);
+            for (const p of processedData) {
+                const b = Math.min(Math.max(Math.floor((p.acceleration + 5) / accelBinSize), 0), numABins - 1);
+                realABins[b]++;
+            }
+            for (const p of simulatedData) {
+                const b = Math.min(Math.max(Math.floor((p.acceleration + 5) / accelBinSize), 0), numABins - 1);
+                simABins[b]++;
+            }
+            const aLabels = realABins.map((_, i) => `${i - 5} до ${i - 4}`);
+
+            content.innerHTML = `
+                <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+                    <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                        <span style="width:14px;height:14px;background:rgba(34,197,94,0.7);border-radius:3px;display:inline-block;"></span>
+                        Реальні дані (${processedData.length} сегм.)
+                    </div>
+                    <div style="display:flex;align-items:center;gap:6px;font-size:0.85rem;">
+                        <span style="width:14px;height:14px;background:rgba(245,158,11,0.7);border-radius:3px;display:inline-block;"></span>
+                        Змодельовані дані (${simulatedData.length} сегм.)
+                        &nbsp;—&nbsp; умови: <b>${getParamLabel(simulatedDataStats.params)}</b>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                    <div style="background:var(--bg-secondary);border-radius:10px;padding:16px;">
+                        <div style="font-weight:600;margin-bottom:12px;font-size:0.9rem;">Розподіл швидкості (км/год)</div>
+                        <div style="position:relative;height:240px;"><canvas id="overlaySpeedChart"></canvas></div>
+                    </div>
+                    <div style="background:var(--bg-secondary);border-radius:10px;padding:16px;">
+                        <div style="font-weight:600;margin-bottom:12px;font-size:0.9rem;">Розподіл прискорення (м/с²)</div>
+                        <div style="position:relative;height:240px;"><canvas id="overlayAccelChart"></canvas></div>
+                    </div>
+                </div>
+
+                <div class="comparison-diff" style="margin-top:16px;">
+                    <h5>Ключові відмінності</h5>
+                    <div class="diff-grid">
+                        <div class="diff-item">
+                            <span class="label">Середня швидкість: реальна</span>
+                            <span class="change">${formatNumber(realDataStats.avgSpeed)} км/год</span>
+                        </div>
+                        <div class="diff-item">
+                            <span class="label">Середня швидкість: змодельована</span>
+                            <span class="change">${formatNumber(simulatedDataStats.avgSpeed)} км/год</span>
+                        </div>
+                        <div class="diff-item">
+                            <span class="label">Сер. прискорення: реальне</span>
+                            <span class="change">${formatNumber(realDataStats.avgAccel, 2)} м/с²</span>
+                        </div>
+                        <div class="diff-item">
+                            <span class="label">Сер. прискорення: змодельоване</span>
+                            <span class="change">${formatNumber(simulatedDataStats.avgAccel, 2)} м/с²</span>
+                        </div>
+                        <div class="diff-item">
+                            <span class="label">Коефіцієнт швидкості</span>
+                            <span class="change ${simulatedDataStats.speedFactor < 1 ? 'down' : 'up'}">${(simulatedDataStats.speedFactor * 100).toFixed(0)}%</span>
+                        </div>
+                        <div class="diff-item">
+                            <span class="label">Зміна сер. швидкості</span>
+                            <span class="change ${simulatedDataStats.avgSpeed < realDataStats.avgSpeed ? 'down' : 'up'}">
+                                ${simulatedDataStats.avgSpeed >= realDataStats.avgSpeed ? '+' : ''}${((simulatedDataStats.avgSpeed - realDataStats.avgSpeed) / realDataStats.avgSpeed * 100).toFixed(1)}%
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Draw speed overlay chart
+            const ctxS = document.getElementById('overlaySpeedChart').getContext('2d');
+            new Chart(ctxS, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [
+                        {
+                            label: 'Реальні',
+                            data: realBins,
+                            backgroundColor: 'rgba(34,197,94,0.55)',
+                            borderColor: 'rgba(34,197,94,0.9)',
+                            borderWidth: 1,
+                            borderRadius: 3
+                        },
+                        {
+                            label: 'Змодельовані',
+                            data: simBins,
+                            backgroundColor: 'rgba(245,158,11,0.55)',
+                            borderColor: 'rgba(245,158,11,0.9)',
+                            borderWidth: 1,
+                            borderRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#f0f0f5', font: { size: 11 } } }
+                    },
+                    scales: {
+                        x: { grid: { color: '#2a2a3a' }, ticks: { color: '#8888a0', font: { size: 10 } } },
+                        y: { grid: { color: '#2a2a3a' }, ticks: { color: '#8888a0' }, beginAtZero: true }
+                    }
+                }
+            });
+
+            // Draw accel overlay chart
+            const ctxA = document.getElementById('overlayAccelChart').getContext('2d');
+            new Chart(ctxA, {
+                type: 'bar',
+                data: {
+                    labels: aLabels,
+                    datasets: [
+                        {
+                            label: 'Реальні',
+                            data: realABins,
+                            backgroundColor: 'rgba(34,197,94,0.55)',
+                            borderColor: 'rgba(34,197,94,0.9)',
+                            borderWidth: 1,
+                            borderRadius: 3
+                        },
+                        {
+                            label: 'Змодельовані',
+                            data: simABins,
+                            backgroundColor: 'rgba(245,158,11,0.55)',
+                            borderColor: 'rgba(245,158,11,0.9)',
+                            borderWidth: 1,
+                            borderRadius: 3
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#f0f0f5', font: { size: 11 } } }
+                    },
+                    scales: {
+                        x: { grid: { color: '#2a2a3a' }, ticks: { color: '#8888a0', font: { size: 10 } } },
+                        y: { grid: { color: '#2a2a3a' }, ticks: { color: '#8888a0' }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        function updateComparisonPanel() {
+            const content = document.getElementById('comparisonContent');
+            
+            if (!realDataStats || !simulatedDataStats) {
+                content.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <path d="M9 17H7A5 5 0 0 1 7 7h2"/>
+                            <path d="M15 7h2a5 5 0 1 1 0 10h-2"/>
+                            <line x1="8" y1="12" x2="16" y2="12"/>
+                        </svg>
+                        <h3>Немає даних для порівняння</h3>
+                        <p>Завантажте дані та запустіть симуляцію для перегляду порівняння</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            const speedDiff = ((simulatedDataStats.avgSpeed - realDataStats.avgSpeed) / realDataStats.avgSpeed * 100);
+            const maxSpeedDiff = ((simulatedDataStats.maxSpeed - realDataStats.maxSpeed) / realDataStats.maxSpeed * 100);
+            const accelDiff = ((simulatedDataStats.avgAccel - realDataStats.avgAccel) / realDataStats.avgAccel * 100);
+            
+            function formatDiff(diff) {
+                const sign = diff >= 0 ? '+' : '';
+                const cls = diff >= 0 ? 'up' : 'down';
+                return `<span class="change ${cls}">${sign}${diff.toFixed(1)}%</span>`;
+            }
+            
+            content.innerHTML = `
+                <div class="comparison-grid">
+                    <div class="comparison-column real">
+                        <h4>Реальні дані</h4>
+                        <div class="comparison-item"><span class="label">Середня швидкість</span><span class="value">${formatNumber(realDataStats.avgSpeed)} км/год</span></div>
+                        <div class="comparison-item"><span class="label">Максимальна швидкість</span><span class="value">${formatNumber(realDataStats.maxSpeed)} км/год</span></div>
+                        <div class="comparison-item"><span class="label">Мінімальна швидкість</span><span class="value">${formatNumber(realDataStats.minSpeed)} км/год</span></div>
+                        <div class="comparison-item"><span class="label">Середнє прискорення</span><span class="value">${formatNumber(realDataStats.avgAccel, 2)} м/с²</span></div>
+                        <div class="comparison-item"><span class="label">Максимальне прискорення</span><span class="value">${formatNumber(realDataStats.maxAccel, 2)} м/с²</span></div>
+                        <div class="comparison-item"><span class="label">Сегментів</span><span class="value">${realDataStats.totalSegments}</span></div>
+                    </div>
+                    <div class="comparison-column simulated">
+                        <h4>Змодельовані дані</h4>
+                        <div class="comparison-item"><span class="label">Середня швидкість</span><span class="value">${formatNumber(simulatedDataStats.avgSpeed)} км/год</span></div>
+                        <div class="comparison-item"><span class="label">Максимальна швидкість</span><span class="value">${formatNumber(simulatedDataStats.maxSpeed)} км/год</span></div>
+                        <div class="comparison-item"><span class="label">Мінімальна швидкість</span><span class="value">${formatNumber(simulatedDataStats.minSpeed)} км/год</span></div>
+                        <div class="comparison-item"><span class="label">Середнє прискорення</span><span class="value">${formatNumber(simulatedDataStats.avgAccel, 2)} м/с²</span></div>
+                        <div class="comparison-item"><span class="label">Максимальне прискорення</span><span class="value">${formatNumber(simulatedDataStats.maxAccel, 2)} м/с²</span></div>
+                        <div class="comparison-item"><span class="label">Коефіцієнт швидкості</span><span class="value">${(simulatedDataStats.speedFactor * 100).toFixed(0)}%</span></div>
+                        <div class="comparison-item"><span class="label">Умови</span><span class="value" style="font-size: 0.8rem;">${getParamLabel(simulatedDataStats.params)}</span></div>
+                    </div>
+                </div>
+                <div class="comparison-diff">
+                    <h5>Різниця (змодельовані vs реальні)</h5>
+                    <div class="diff-grid">
+                        <div class="diff-item"><span class="label">Середня швидкість</span>${formatDiff(speedDiff)}</div>
+                        <div class="diff-item"><span class="label">Максимальна швидкість</span>${formatDiff(maxSpeedDiff)}</div>
+                        <div class="diff-item"><span class="label">Середнє прискорення</span>${formatDiff(accelDiff)}</div>
+                        <div class="diff-item"><span class="label">Загальний вплив</span>${formatDiff((speedDiff + accelDiff) / 2)}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function generateExtendedDataset() {
+            if (processedData.length === 0) {
+                log("Спочатку завантажте дані", "error");
+                return;
+            }
+            
+            log("Генерація розширеного датасету...");
+            
+            const scenarios = [
+                { weather: 'clear', surface: 'dry', time: 'day', name: 'Ідеальні умови' },
+                { weather: 'rain', surface: 'wet', time: 'day', name: 'Дощ вдень' },
+                { weather: 'heavy_rain', surface: 'puddles', time: 'dusk', name: 'Злива в сутінках' },
+                { weather: 'snow', surface: 'snow_covered', time: 'day', name: 'Сніг вдень' },
+                { weather: 'blizzard', surface: 'icy', time: 'night', name: 'Заметіль вночі' },
+                { weather: 'fog', surface: 'wet', time: 'dawn', name: 'Туман на світанку' },
+                { weather: 'clear', surface: 'dry', time: 'night', name: 'Ясна ніч' },
+                { weather: 'cloudy', surface: 'black_ice', time: 'dawn', name: 'Чорний лід' }
+            ];
+            
+            const extendedData = [];
+            
+            for (const scenario of scenarios) {
+                const weatherFactor = WEATHER_FACTORS[scenario.weather];
+                const surfaceFactor = SURFACE_FACTORS[scenario.surface];
+                const timeFactor = TIME_FACTORS[scenario.time];
+                
+                // Apply adaptive factors based on dataset profile
+                let speedFactor = weatherFactor.speedFactor * surfaceFactor.speedFactor * timeFactor.speedFactor;
+                let accelFactor = weatherFactor.accelFactor * surfaceFactor.accelFactor * timeFactor.accelFactor;
+                
+                // Adaptive adjustment
+                if (datasetProfile.urbanRatio > 0.5) {
+                    speedFactor = speedFactor * 0.7 + 0.3;
+                }
+                
+                for (const point of processedData) {
+                    extendedData.push({
+                        ...point,
+                        scenario: scenario.name,
+                        weather: scenario.weather,
+                        surface: scenario.surface,
+                        timeOfDay: scenario.time,
+                        originalSpeedKmh: point.speedKmh,
+                        speedKmh: point.speedKmh * speedFactor,
+                        originalAcceleration: point.acceleration,
+                        acceleration: point.acceleration * accelFactor
+                    });
+                }
+            }
+            
+            augmentedData = extendedData;
+            
+            log(`Згенеровано ${extendedData.length} записів (${scenarios.length} сценаріїв)`, "success");
+            
+            return extendedData;
+        }
+
+        // ============================================================
+        // UI UPDATES
+        // ============================================================
+
+        function updateStats() {
+            const totalPoints = rawData.length;
+            const totalSegments = processedData.length;
+            const driverCount = Object.keys(driverAnalysis).length;
+            
+            const avgSpeed = processedData.reduce((sum, p) => sum + p.speedKmh, 0) / totalSegments || 0;
+            const maxSpeed = processedData.length > 0
+    ? processedData.reduce((max, p) => p.speedKmh > max ? p.speedKmh : max, 0)
+    : 0;
+            const avgAccel = processedData.reduce((sum, p) => sum + Math.abs(p.acceleration), 0) / totalSegments || 0;
+            
+            document.getElementById('statPoints').textContent = totalPoints.toLocaleString();
+            document.getElementById('statDrivers').textContent = driverCount;
+            document.getElementById('statAvgSpeed').textContent = formatNumber(avgSpeed);
+            document.getElementById('statMaxSpeed').textContent = formatNumber(maxSpeed);
+            document.getElementById('statAvgAccel').textContent = formatNumber(avgAccel, 2);
+            document.getElementById('statSegments').textContent = totalSegments.toLocaleString();
+        }
+
+        function updateDriversTable() {
+            const tbody = document.getElementById('driversTable');
+            const searchTerm = document.getElementById('driverSearch').value.toLowerCase();
+            
+            const drivers = Object.entries(driverAnalysis)
+                .filter(([id]) => id.toLowerCase().includes(searchTerm))
+                .sort((a, b) => b[1].segmentCount - a[1].segmentCount);
+            
+            if (drivers.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            ${rawData.length === 0 ? 'Завантажте дані для аналізу водіїв' : 'Водіїв не знайдено'}
+                        </td>
+                    </tr>
+                `;
+                updateDeleteButton();
+                return;
+            }
+            
+            tbody.innerHTML = drivers.map(([id, data]) => `
+                <tr data-driver-id="${id}">
+                    <td>
+                        <input type="checkbox" class="driver-checkbox" data-driver-id="${id}" ${selectedDrivers.has(id) ? 'checked' : ''}>
+                    </td>
+                    <td><strong>${id}</strong></td>
+                    <td><span class="badge badge-${data.style}">${STYLE_LABELS[data.style]}</span></td>
+                    <td>${formatNumber(data.avgSpeed)} км/год</td>
+                    <td>${formatNumber(data.maxSpeed)} км/год</td>
+                    <td>${formatNumber(data.avgAccel, 2)} м/с²</td>
+                    <td>${data.sharpManeuvers}</td>
+                    <td>${data.segmentCount}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-secondary btn-small" onclick="showDriverDetail('${id}')">
+                            Детальніше
+                        </button>
+                        <button class="btn btn-danger btn-small" onclick="confirmDeleteDriver('${id}')" title="Видалити водія">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width: 14px; height: 14px;">
+                                <polyline points="3 6 5 6 21 6"/>
+                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+            
+            document.querySelectorAll('.driver-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', (e) => {
+                    const driverId = e.target.dataset.driverId;
+                    if (e.target.checked) {
+                        selectedDrivers.add(driverId);
+                    } else {
+                        selectedDrivers.delete(driverId);
+                    }
+                    updateDeleteButton();
+                    updateSelectAllCheckbox();
+                });
+            });
+            
+            updateDeleteButton();
+            updateSelectAllCheckbox();
+        }
+        
+        function updateDeleteButton() {
+            const btn = document.getElementById('deleteSelectedBtn');
+            btn.disabled = selectedDrivers.size === 0;
+        }
+        
+        function updateSelectAllCheckbox() {
+            const selectAll = document.getElementById('selectAllDrivers');
+            const checkboxes = document.querySelectorAll('.driver-checkbox');
+            const checkedCount = document.querySelectorAll('.driver-checkbox:checked').length;
+            
+            if (checkboxes.length === 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            } else if (checkedCount === 0) {
+                selectAll.checked = false;
+                selectAll.indeterminate = false;
+            } else if (checkedCount === checkboxes.length) {
+                selectAll.checked = true;
+                selectAll.indeterminate = false;
+            } else {
+                selectAll.checked = false;
+                selectAll.indeterminate = true;
+            }
+        }
+        
+        function confirmDeleteDriver(driverId) {
+            driversToDelete = [driverId];
+            document.getElementById('deleteConfirmText').textContent = 
+                `Ви впевнені, що хочете видалити водія ${driverId}? Всі його дані будуть видалені.`;
+            document.getElementById('deleteConfirmModal').classList.add('active');
+        }
+        
+        function confirmDeleteSelected() {
+            driversToDelete = Array.from(selectedDrivers);
+            if (driversToDelete.length === 0) return;
+            
+            document.getElementById('deleteConfirmText').textContent = 
+                `Ви впевнені, що хочете видалити ${driversToDelete.length} вибраних водіїв? Всі їх дані будуть видалені.`;
+            document.getElementById('deleteConfirmModal').classList.add('active');
+        }
+        
+        function deleteDrivers(driverIds) {
+            if (driverIds.length === 0) return;
+            
+            const deletedCount = driverIds.length;
+            
+            rawData = rawData.filter(point => !driverIds.includes(point.taxiId));
+            processedData = processedData.filter(point => !driverIds.includes(point.taxiId));
+            
+            for (const id of driverIds) {
+                delete driverAnalysis[id];
+            }
+            
+            for (const id of driverIds) {
+                selectedDrivers.delete(id);
+            }
+            driversToDelete = [];
+            
+            calculateRealDataStats();
+            calculateDatasetProfile();
+            
+            updateStats();
+            updateCharts();
+            updateDriversTable();
+            updateDetailedResults();
+            updateComparisonPanel();
+            
+            if (simulatedDataStats) {
+                simulatedDataStats = null;
+                simulatedData = [];
+                document.getElementById('simulationInfo').style.display = 'none';
+            }
+            
+            log(`Видалено ${deletedCount} водіїв`, "warning");
+        }
+
+        function updateDetailedResults() {
+            if (processedData.length === 0) return;
+            
+            const totalSegments = processedData.length;
+            const driverCount = Object.keys(driverAnalysis).length;
+            const speeds = processedData.map(p => p.speedKmh);
+            const accels = processedData.map(p => p.acceleration);
+            const turns = processedData.map(p => p.turnAngle);
+            
+            const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+            const maxSpeed = Math.max(...speeds);
+            const minSpeed = Math.min(...speeds);
+            const speedStd = Math.sqrt(speeds.reduce((sum, s) => sum + (s - avgSpeed) ** 2, 0) / speeds.length);
+            
+            const avgAccel = accels.reduce((a, b) => a + Math.abs(b), 0) / accels.length;
+            const maxAccel = Math.max(...accels.map(Math.abs));
+            const brakingEvents = accels.filter(a => a < -1.5).length;
+            const accelerationEvents = accels.filter(a => a > 1.5).length;
+            
+            const avgTurn = turns.reduce((a, b) => a + b, 0) / turns.length;
+            const sharpTurns = turns.filter(t => t > 45).length;
+            const uTurns = turns.filter(t => t > 120).length;
+            
+            const styles = Object.values(driverAnalysis).reduce((acc, d) => {
+                acc[d.style] = (acc[d.style] || 0) + 1;
+                return acc;
+            }, {});
+            
+            document.getElementById('generalStats').innerHTML = `
+                <div class="result-item"><span class="label">Всього точок GPS</span><span class="value">${rawData.length.toLocaleString()}</span></div>
+                <div class="result-item"><span class="label">Сегментів руху</span><span class="value">${totalSegments.toLocaleString()}</span></div>
+                <div class="result-item"><span class="label">Унікальних водіїв</span><span class="value">${driverCount}</span></div>
+                <div class="result-item"><span class="label">Середній час сегменту</span><span class="value">${formatNumber(processedData.reduce((s, p) => s + p.timeDiff, 0) / totalSegments)} с</span></div>
+                <div class="result-item"><span class="label">Середня відстань</span><span class="value">${formatNumber(processedData.reduce((s, p) => s + p.distance, 0) / totalSegments)} м</span></div>
+                <div class="result-item"><span class="label">Загальна відстань</span><span class="value">${formatNumber(processedData.reduce((s, p) => s + p.distance, 0) / 1000, 2)} км</span></div>
+            `;
+            
+            document.getElementById('styleStats').innerHTML = `
+                <div class="result-item"><span class="label">Агресивний стиль</span><span class="value" style="color: var(--danger)">${styles.aggressive || 0} водіїв (${((styles.aggressive || 0) / driverCount * 100).toFixed(1)}%)</span></div>
+                <div class="result-item"><span class="label">Нормальний стиль</span><span class="value" style="color: var(--success)">${styles.normal || 0} водіїв (${((styles.normal || 0) / driverCount * 100).toFixed(1)}%)</span></div>
+                <div class="result-item"><span class="label">Обережний стиль</span><span class="value" style="color: var(--accent)">${styles.cautious || 0} водіїв (${((styles.cautious || 0) / driverCount * 100).toFixed(1)}%)</span></div>
+                <div class="result-item"><span class="label">Еко стиль</span><span class="value" style="color: var(--eco)">${styles.eco || 0} водіїв (${((styles.eco || 0) / driverCount * 100).toFixed(1)}%)</span></div>
+            `;
+            
+            document.getElementById('speedStats').innerHTML = `
+                <div class="result-item"><span class="label">Середня швидкість</span><span class="value">${formatNumber(avgSpeed)} км/год</span></div>
+                <div class="result-item"><span class="label">Максимальна швидкість</span><span class="value">${formatNumber(maxSpeed)} км/год</span></div>
+                <div class="result-item"><span class="label">Мінімальна швидкість</span><span class="value">${formatNumber(minSpeed)} км/год</span></div>
+                <div class="result-item"><span class="label">Стандартне відхилення</span><span class="value">${formatNumber(speedStd)} км/год</span></div>
+                <div class="result-item"><span class="label">Перевищення 80 км/год</span><span class="value">${speeds.filter(s => s > 80).length} разів</span></div>
+                <div class="result-item"><span class="label">Рух < 10 км/год</span><span class="value">${speeds.filter(s => s < 10).length} разів</span></div>
+            `;
+            
+            document.getElementById('accelStats').innerHTML = `
+                <div class="result-item"><span class="label">Середнє прискорення</span><span class="value">${formatNumber(avgAccel, 2)} м/с²</span></div>
+                <div class="result-item"><span class="label">Максимальне прискорення</span><span class="value">${formatNumber(maxAccel, 2)} м/с²</span></div>
+                <div class="result-item"><span class="label">Різке гальмування (< -1.5)</span><span class="value">${brakingEvents} разів</span></div>
+                <div class="result-item"><span class="label">Різке прискорення (> 1.5)</span><span class="value">${accelerationEvents} разів</span></div>
+                <div class="result-item"><span class="label">Екстремальне гальмування (< -3)</span><span class="value">${accels.filter(a => a < -3).length} разів</span></div>
+                <div class="result-item"><span class="label">Плавний рух (-0.5 до 0.5)</span><span class="value">${accels.filter(a => Math.abs(a) < 0.5).length} разів</span></div>
+            `;
+            
+            document.getElementById('maneuverStats').innerHTML = `
+                <div class="result-item"><span class="label">Середній кут повороту</span><span class="value">${formatNumber(avgTurn)}°</span></div>
+                <div class="result-item"><span class="label">Різкі повороти (> 45°)</span><span class="value">${sharpTurns} разів</span></div>
+                <div class="result-item"><span class="label">Розвороти (> 120°)</span><span class="value">${uTurns} разів</span></div>
+                <div class="result-item"><span class="label">Плавні маневри (< 15°)</span><span class="value">${turns.filter(t => t < 15).length} разів</span></div>
+            `;
+            
+            document.getElementById('benchmarkStats').innerHTML = `
+                <div class="result-item"><span class="label">Еталон: середня швидкість</span><span class="value">35-50 км/год (ваш: ${formatNumber(avgSpeed)})</span></div>
+                <div class="result-item"><span class="label">Еталон: прискорення</span><span class="value">< 1.0 м/с² (ваш: ${formatNumber(avgAccel, 2)})</span></div>
+                <div class="result-item"><span class="label">Рівень безпеки</span><span class="value">${avgAccel < 1.0 && avgSpeed < 60 ? 'Високий' : avgAccel < 1.5 ? 'Середній' : 'Низький'}</span></div>
+                <div class="result-item"><span class="label">Економічність</span><span class="value">${avgSpeed < 40 && avgAccel < 0.5 ? 'Висока' : avgSpeed < 55 ? 'Середня' : 'Низька'}</span></div>
+            `;
+        }
+
+        // ============================================================
+        // CHARTS
+        // ============================================================
+
+        function initCharts() {
+            const defaultOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: { color: '#8888a0' }
+                    }
+                }
+            };
+
+            charts.style = new Chart(document.getElementById('styleChart'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Агресивний', 'Нормальний', 'Обережний', 'Еко'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#ef4444', '#22c55e', '#3b82f6', '#10b981'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    ...defaultOptions,
+                    cutout: '60%',
+                    plugins: {
+                        ...defaultOptions.plugins,
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#8888a0', padding: 20 }
+                        }
+                    }
+                }
+            });
+
+            charts.speed = new Chart(document.getElementById('speedChart'), {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Кількість',
+                        data: [],
+                        backgroundColor: '#3b82f6',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    ...defaultOptions,
+                    scales: {
+                        x: { 
+                            grid: { color: '#2a2a3a' },
+                            ticks: { color: '#8888a0' }
+                        },
+                        y: { 
+                            grid: { color: '#2a2a3a' },
+                            ticks: { color: '#8888a0' }
+                        }
+                    }
+                }
+            });
+
+            charts.conditions = new Chart(document.getElementById('conditionsChart'), {
+                type: 'bar',
+                data: {
+                    labels: Object.values(ROAD_CONDITIONS).map(c => c.label),
+                    datasets: [{
+                        label: 'Середня швидкість (км/год)',
+                        data: [0, 0, 0, 0, 0, 0],
+                        backgroundColor: Object.values(ROAD_CONDITIONS).map(c => c.color),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    ...defaultOptions,
+                    indexAxis: 'y',
+                    scales: {
+                        x: { 
+                            grid: { color: '#2a2a3a' },
+                            ticks: { color: '#8888a0' }
+                        },
+                        y: { 
+                            grid: { color: '#2a2a3a' },
+                            ticks: { color: '#8888a0' }
+                        }
+                    }
+                }
+            });
+
+            charts.accel = new Chart(document.getElementById('accelChart'), {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Кількість',
+                        data: [],
+                        backgroundColor: '#8b5cf6',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    ...defaultOptions,
+                    scales: {
+                        x: { 
+                            grid: { color: '#2a2a3a' },
+                            ticks: { color: '#8888a0' }
+                        },
+                        y: { 
+                            grid: { color: '#2a2a3a' },
+                            ticks: { color: '#8888a0' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateCharts() {
+            if (processedData.length === 0) return;
+            
+            const styleCounts = { aggressive: 0, normal: 0, cautious: 0, eco: 0 };
+            for (const driver of Object.values(driverAnalysis)) {
+                styleCounts[driver.style]++;
+            }
+            charts.style.data.datasets[0].data = [
+                styleCounts.aggressive, styleCounts.normal, styleCounts.cautious, styleCounts.eco
+            ];
+            charts.style.update();
+            
+            const speeds = processedData.map(p => p.speedKmh);
+            const speedBins = Array(12).fill(0);
+            const binSize = 10;
+            for (const speed of speeds) {
+                const bin = Math.min(Math.floor(speed / binSize), 11);
+                speedBins[bin]++;
+            }
+            charts.speed.data.labels = speedBins.map((_, i) => `${i * binSize}-${(i + 1) * binSize}`);
+            charts.speed.data.datasets[0].data = speedBins;
+            charts.speed.update();
+            
+            const baseAvgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+            const conditionSpeeds = Object.keys(ROAD_CONDITIONS).map(key => 
+                baseAvgSpeed * ROAD_CONDITIONS[key].speedFactor
+            );
+            charts.conditions.data.datasets[0].data = conditionSpeeds;
+            charts.conditions.update();
+            
+            const accels = processedData.map(p => p.acceleration);
+            const accelBins = Array(10).fill(0);
+            for (const accel of accels) {
+                const bin = Math.min(Math.max(Math.floor((accel + 5) / 1), 0), 9);
+                accelBins[bin]++;
+            }
+            charts.accel.data.labels = accelBins.map((_, i) => `${i - 5} до ${i - 4}`);
+            charts.accel.data.datasets[0].data = accelBins;
+            charts.accel.update();
+        }
+
+        function updateChartsWithSimulation(simData, factors) {
+            const speeds = simData.map(p => p.speedKmh);
+            const avgSpeed = speeds.reduce((a, b) => a + b, 0) / speeds.length;
+            
+            const conditionSpeeds = Object.keys(ROAD_CONDITIONS).map(key => 
+                avgSpeed * ROAD_CONDITIONS[key].speedFactor
+            );
+            charts.conditions.data.datasets[0].data = conditionSpeeds;
+            charts.conditions.update();
+            
+            const speedBins = Array(12).fill(0);
+            const binSize = 10;
+            for (const speed of speeds) {
+                const bin = Math.min(Math.floor(speed / binSize), 11);
+                speedBins[bin]++;
+            }
+            charts.speed.data.datasets[0].data = speedBins;
+            charts.speed.update();
+        }
+
+        // ============================================================
+        // DRIVER MODAL
+        // ============================================================
+
+        function showDriverDetail(driverId) {
+    const data = driverAnalysis[driverId];
+    if (!data) return;
+    
+    document.getElementById('modalDriverId').textContent = driverId;
+    
+    // Генеруємо пояснення стилю на основі реальних даних
+    function generateStyleExplanation(data) {
+    const reasons = [];
+    const details = [];
+
+    // Пояснення по кожному критерію з реальними порогами
+    if (data.avgSpeed >= 70)
+        reasons.push(`Середня швидкість <b>${formatNumber(data.avgSpeed)} км/год</b> — значно перевищує міську норму (25–55 км/год)`);
+    else if (data.avgSpeed >= 55)
+        reasons.push(`Середня швидкість <b>${formatNumber(data.avgSpeed)} км/год</b> — підвищена відносно міського ліміту`);
+    else if (data.avgSpeed < 25)
+        reasons.push(`Середня швидкість <b>${formatNumber(data.avgSpeed)} км/год</b> — дуже низька, характерна для пробок або надобережного стилю`);
+    else
+        reasons.push(`Середня швидкість <b>${formatNumber(data.avgSpeed)} км/год</b> — у межах норми міського руху`);
+
+    if (data.avgAccel >= 1.8)
+        reasons.push(`Середнє прискорення <b>${formatNumber(data.avgAccel, 2)} м/с²</b> — різке (норма: до 1.2 м/с²)`);
+    else if (data.avgAccel >= 1.2)
+        reasons.push(`Середнє прискорення <b>${formatNumber(data.avgAccel, 2)} м/с²</b> — активне, вище рекомендованого`);
+    else if (data.avgAccel < 0.4)
+        reasons.push(`Середнє прискорення <b>${formatNumber(data.avgAccel, 2)} м/с²</b> — дуже плавне, еко-стиль`);
+    else
+        reasons.push(`Середнє прискорення <b>${formatNumber(data.avgAccel, 2)} м/с²</b> — у нормі`);
+
+    if (data.sharpManeuversRatio >= 0.10)
+        reasons.push(`Різкі маневри у <b>${(data.sharpManeuversRatio * 100).toFixed(1)}%</b> відрізків — висока частота (норма: до 5%)`);
+    else if (data.sharpManeuversRatio >= 0.05)
+        reasons.push(`Різкі маневри у <b>${(data.sharpManeuversRatio * 100).toFixed(1)}%</b> відрізків — помірна частота`);
+
+    if (data.hardBrakeCount > 0) {
+        const brakeRatio = (data.hardBrakeCount / data.segmentCount * 100).toFixed(1);
+        details.push(`Різких гальмувань (< −2.5 м/с²): <b>${data.hardBrakeCount}</b> (${brakeRatio}% відрізків)`);
+    }
+    if (data.speedingCount > 0) {
+        const speedingRatio = (data.speedingCount / data.segmentCount * 100).toFixed(1);
+        details.push(`Відрізків понад 80 км/год: <b>${data.speedingCount}</b> (${speedingRatio}%)`);
+    }
+    details.push(`Зважений індекс агресивності: <b>${data.aggrScore.toFixed(1)}</b> / 100`);
+
+    return { reasons, details };
+}
+    
+    // Генеруємо рекомендації
+    function generateRecommendations(data) {
+        const t = datasetThresholds;
+        const recs = [];
+        
+        if (data.style === 'aggressive') {
+            recs.push({ icon: '⚠️', color: '#ef4444', text: 'Знизити середню швидкість: рух з постійно високою швидкістю підвищує ризик ДТП та витрати пального.' });
+            if (data.avgAccel >= t.accelP75)
+                recs.push({ icon: '🚦', color: '#f59e0b', text: 'Плавніше розганятись і гальмувати: різке прискорення збільшує знос двигуна і трансмісії на 30–40%.' });
+            if (data.sharpManeuversRatio >= t.sharpP75)
+                recs.push({ icon: '↩️', color: '#f59e0b', text: 'Зменшити кількість різких поворотів: заздалегідь оцінювати дорожню ситуацію та перестроюватись плавно.' });
+            recs.push({ icon: '📏', color: '#8b5cf6', text: 'Збільшити дистанцію до попереднього авто — це автоматично знижує потребу у різких гальмуваннях.' });
+            
+        } else if (data.style === 'eco') {
+            recs.push({ icon: '✅', color: '#22c55e', text: 'Відмінний еко-стиль! Підтримуйте рівномірну швидкість для мінімальної витрати пального.' });
+            recs.push({ icon: '⏱️', color: '#3b82f6', text: 'При потоці інтенсивного руху можна дещо підвищити швидкість — надто повільний рух теж може створювати аварійні ситуації.' });
+            recs.push({ icon: '💡', color: '#10b981', text: 'Продовжуйте використовувати передбачуваний стиль — це зменшує витрати пального до 15% у порівнянні із середнім водієм.' });
+            
+        } else if (data.style === 'cautious') {
+            recs.push({ icon: '👍', color: '#3b82f6', text: 'Обережний стиль — безпечний вибір. За необхідності можна впевненіше тримати темп транспортного потоку.' });
+            if (data.avgSpeed <= t.speedP25)
+                recs.push({ icon: '🚗', color: '#f59e0b', text: 'У деяких ситуаціях занадто низька швидкість може заважати загальному потоку. Орієнтуйтесь на швидкість потоку.' });
+            recs.push({ icon: '🛡️', color: '#22c55e', text: 'Рівень безпеки — високий. Зберігайте поточні звички дистанціювання та заздалегідньої реакції.' });
+            
+        } else {
+            recs.push({ icon: '✅', color: '#22c55e', text: 'Збалансований стиль водіння — оптимальне поєднання безпеки та ефективності.' });
+            recs.push({ icon: '📊', color: '#3b82f6', text: 'Показники стабільні. Слідкуйте за варіативністю швидкості — рівномірний рух ще більше знижує витрати.' });
+            recs.push({ icon: '🎯', color: '#8b5cf6', text: 'Для покращення еко-рейтингу: уникайте простоїв на холостому ходу та намагайтесь їхати з постійною швидкістю.' });
+        }
+        
+        return recs;
+    }
+    
+    const explanation = generateStyleExplanation(data);
+    const recommendations = generateRecommendations(data);
+    
+    // Колір рамки по стилю
+    const styleColors = {
+        aggressive: '#ef4444', normal: '#3b82f6', cautious: '#3b82f6', eco: '#10b981'
+    };
+    const styleColor = styleColors[data.style] || '#3b82f6';
+    
+    const modalBody = document.getElementById('modalBody');
+    modalBody.innerHTML = `
+        <div class="stats-grid" style="margin-bottom: 20px;">
+            <div class="stat-card">
+                <div class="stat-label">Стиль водіння</div>
+                <div class="stat-value"><span class="badge badge-${data.style}">${STYLE_LABELS[data.style]}</span></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Сегментів</div>
+                <div class="stat-value">${data.segmentCount}</div>
+            </div>
+        </div>
+        
+        <!-- ПОЯСНЕННЯ СТИЛЮ -->
+        <div class="result-section">
+            <h3>🔍 Чому такий стиль водіння?</h3>
+            <div style="background: var(--bg-secondary); border-left: 3px solid ${styleColor}; border-radius: 8px; padding: 14px 16px; margin-bottom: 10px;">
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 8px;">Аналіз:</div>
+                ${explanation.reasons.map(r => `
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 6px; font-size: 0.9rem;">
+                        <span style="color: ${styleColor}; margin-top: 2px;">▸</span>
+                        <span>${r}</span>
+                    </div>`).join('')}
+                ${explanation.details.map(d => `
+                    <div style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 4px; font-size: 0.85rem; color: var(--text-secondary);">
+                        <span style="margin-top: 2px;">→</span>
+                        <span>${d}</span>
+                    </div>`).join('')}
+            </div>
+        </div>
+        
+        <div class="result-section">
+            <h3>Швидкісний режим</h3>
+            <div class="result-grid">
+                <div class="result-item"><span class="label">Середня швидкість</span><span class="value">${formatNumber(data.avgSpeed)} км/год</span></div>
+                <div class="result-item"><span class="label">Максимальна швидкість</span><span class="value">${formatNumber(data.maxSpeed)} км/год</span></div>
+                <div class="result-item"><span class="label">Мінімальна швидкість</span><span class="value">${formatNumber(data.minSpeed)} км/год</span></div>
+                <div class="result-item"><span class="label">Стандартне відхилення</span><span class="value">${formatNumber(data.speedStd)} км/год</span></div>
+            </div>
+        </div>
+        
+        <div class="result-section">
+            <h3>Прискорення</h3>
+            <div class="result-grid">
+                <div class="result-item"><span class="label">Середнє прискорення</span><span class="value">${formatNumber(data.avgAccel, 2)} м/с²</span></div>
+                <div class="result-item"><span class="label">Максимальне прискорення</span><span class="value">${formatNumber(data.maxAccel, 2)} м/с²</span></div>
+                <div class="result-item"><span class="label">Різкі маневри</span><span class="value">${data.sharpManeuvers}</span></div>
+            </div>
+        </div>
+        
+        <div class="result-section">
+            <h3>Маневрування</h3>
+            <div class="result-grid">
+                <div class="result-item"><span class="label">Середній кут повороту</span><span class="value">${formatNumber(data.avgTurn)}°</span></div>
+                <div class="result-item"><span class="label">Максимальний кут</span><span class="value">${formatNumber(data.maxTurn)}°</span></div>
+            </div>
+        </div>
+        
+        <div class="result-section">
+            <h3>Оцінка</h3>
+            <div class="result-grid">
+                <div class="result-item"><span class="label">Рівень безпеки</span><span class="value">${data.avgAccel < 1.0 && data.avgSpeed < 60 ? 'Високий' : data.avgAccel < 1.5 ? 'Середній' : 'Низький'}</span></div>
+                <div class="result-item"><span class="label">Економічність</span><span class="value">${data.avgSpeed < 40 && data.avgAccel < 0.5 ? 'Висока' : data.avgSpeed < 55 ? 'Середня' : 'Низька'}</span></div>
+                <div class="result-item"><span class="label">Плавність</span><span class="value">${data.avgAccel < 0.8 ? 'Висока' : data.avgAccel < 1.2 ? 'Середня' : 'Низька'}</span></div>
+                <div class="result-item"><span class="label">Агресивність</span><span class="value">${data.sharpManeuvers > 10 ? 'Висока' : data.sharpManeuvers > 5 ? 'Середня' : 'Низька'}</span></div>
+            </div>
+        </div>
+        
+        <!-- РЕКОМЕНДАЦІЇ -->
+        <div class="result-section">
+            <h3>💡 Рекомендації</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                ${recommendations.map(rec => `
+                    <div style="display: flex; align-items: flex-start; gap: 12px; background: var(--bg-secondary); border-radius: 8px; padding: 12px 14px; border-left: 3px solid ${rec.color};">
+                        <span style="font-size: 1.1rem; flex-shrink: 0; margin-top: 1px;">${rec.icon}</span>
+                        <span style="font-size: 0.875rem; line-height: 1.5;">${rec.text}</span>
+                    </div>`).join('')}
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('driverModal').classList.add('active');
+}
+
+        // ============================================================
+        // EXPORT SYSTEM
+        // ============================================================
+
+        let exportConfig = {
+            format: 'json',
+            dataType: 'processed',
+            fields: [],
+            includeMetadata: true,
+            includeTimestamp: true,
+            prettyPrint: true,
+            limitRecords: false,
+            recordLimit: 1000,
+            jsonStructure: 'nested'
+        };
+
+        function initExportModal() {
+            const fieldsGroup = document.getElementById('fieldsGroup');
+            updateExportFields('processed');
+            updateExportPreview();
+            updateExportCount();
+        }
+
+        function updateExportFields(dataType) {
+            const fieldsGroup = document.getElementById('fieldsGroup');
+            const fields = EXPORT_FIELDS[dataType] || EXPORT_FIELDS.processed;
+            
+            fieldsGroup.innerHTML = fields.map(field => `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="field_${field.id}" data-field="${field.id}" ${field.default ? 'checked' : ''}>
+                    <label for="field_${field.id}">${field.label}</label>
+                </div>
+            `).join('');
+            
+            // Add event listeners
+            fieldsGroup.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+                cb.addEventListener('change', () => {
+                    updateExportPreview();
+                });
+            });
+        }
+
+        function getSelectedFields() {
+            const fields = [];
+            document.querySelectorAll('#fieldsGroup input[type="checkbox"]:checked').forEach(cb => {
+                fields.push(cb.dataset.field);
+            });
+            return fields;
+        }
+
+        function getExportData() {
+            const dataType = document.querySelector('input[name="dataType"]:checked').value;
+            let data = [];
+            
+            switch (dataType) {
+                case 'processed':
+                    data = processedData;
+                    break;
+                case 'drivers':
+                    data = Object.entries(driverAnalysis).map(([id, d]) => ({
+                        driverId: id,
+                        ...d
+                    }));
+                    break;
+                case 'simulated':
+                    if (simulatedData.length === 0) {
+                        log("Спочатку запустіть симуляцію", "error");
+                        return [];
+                    }
+                    data = simulatedData;
+                    break;
+                case 'augmented':
+                    if (augmentedData.length === 0) {
+                        log("Спочатку згенеруйте розширений датасет", "error");
+                        return [];
+                    }
+                    data = augmentedData;
+                    break;
+            }
+            
+            // Apply record limit if enabled
+            const limitRecords = document.getElementById('limitRecords').checked;
+            if (limitRecords) {
+                const limit = parseInt(document.getElementById('recordLimit').value) || 1000;
+                data = data.slice(0, limit);
+            }
+            
+            // Filter fields
+            const selectedFields = getSelectedFields();
+            return data.map(item => {
+                const filtered = {};
+                for (const field of selectedFields) {
+                    if (item[field] !== undefined) {
+                        // Format timestamps
+                        if (field === 'timestamp' && item[field] instanceof Date) {
+                            filtered[field] = item[field].toISOString();
+                        } else {
+                            filtered[field] = item[field];
+                        }
+                    }
+                }
+                return filtered;
+            });
+        }
+
+        function updateExportPreview() {
+            const preview = document.getElementById('exportPreview');
+            const format = document.querySelector('input[name="exportFormat"]:checked').value;
+            const structure = document.querySelector('input[name="jsonStructure"]:checked').value;
+            const data = getExportData().slice(0, 2);
+            
+            if (data.length === 0) {
+                preview.textContent = '// Немає даних для експорту';
+                return;
+            }
+            
+            let previewText = '';
+            
+            if (format === 'json') {
+                if (structure === 'nested') {
+                    previewText = JSON.stringify({
+                        metadata: {
+                            exportDate: new Date().toISOString(),
+                            totalRecords: getExportData().length,
+                            format: 'nested'
+                        },
+                        data: data
+                    }, null, 2);
+                } else if (structure === 'flat') {
+                    previewText = JSON.stringify(data, null, 2);
+                } else if (structure === 'grouped') {
+                    const grouped = {};
+                    data.forEach(item => {
+                        const key = item.taxiId || item.driverId || 'unknown';
+                        if (!grouped[key]) grouped[key] = [];
+                        grouped[key].push(item);
+                    });
+                    previewText = JSON.stringify(grouped, null, 2);
+                }
+            } else if (format === 'csv') {
+                const fields = getSelectedFields();
+                const headers = fields.join(',');
+                const rows = data.map(item => fields.map(f => {
+                    const val = item[f];
+                    if (typeof val === 'string' && val.includes(',')) {
+                        return `"${val}"`;
+                    }
+                    return val ?? '';
+                }).join(','));
+                previewText = [headers, ...rows].join('\n');
+            } else if (format === 'jsonl') {
+                previewText = data.map(item => JSON.stringify(item)).join('\n');
+            }
+            
+            // Truncate for preview
+            if (previewText.length > 1000) {
+                previewText = previewText.substring(0, 1000) + '\n\n... (скорочено для попереднього перегляду)';
+            }
+            
+            preview.textContent = previewText;
+        }
+
+        function updateExportCount() {
+            const dataType = document.querySelector('input[name="dataType"]:checked')?.value || 'processed';
+            let count = 0;
+            
+            switch (dataType) {
+                case 'processed':
+                    count = processedData.length;
+                    break;
+                case 'drivers':
+                    count = Object.keys(driverAnalysis).length;
+                    break;
+                case 'simulated':
+                    count = simulatedData.length;
+                    break;
+                case 'augmented':
+                    count = augmentedData.length;
+                    break;
+            }
+            
+            const limitRecords = document.getElementById('limitRecords')?.checked;
+            if (limitRecords) {
+                const limit = parseInt(document.getElementById('recordLimit')?.value) || 1000;
+                count = Math.min(count, limit);
+            }
+            
+            document.getElementById('exportCount').textContent = count.toLocaleString();
+        }
+
+        function doExport() {
+            const format = document.querySelector('input[name="exportFormat"]:checked').value;
+            const structure = document.querySelector('input[name="jsonStructure"]:checked').value;
+            const dataType = document.querySelector('input[name="dataType"]:checked').value;
+            const includeMetadata = document.getElementById('includeMetadata').checked;
+            const prettyPrint = document.getElementById('prettyPrint').checked;
+            
+            const data = getExportData();
+            
+            if (data.length === 0) {
+                return;
+            }
+            
+            let content = '';
+            let filename = '';
+            let mimeType = '';
+            
+            const timestamp = Date.now();
+            
+            if (format === 'json') {
+                let exportObject;
+                
+                if (structure === 'nested' && includeMetadata) {
+                    exportObject = {
+                        metadata: {
+                            exportDate: new Date().toISOString(),
+                            totalRecords: data.length,
+                            dataType: dataType,
+                            format: 'nested',
+                            datasetProfile: datasetProfile,
+                            simulationParams: simulatedDataStats?.params || null
+                        },
+                        data: data
+                    };
+                } else if (structure === 'flat') {
+                    exportObject = data;
+                } else if (structure === 'grouped') {
+                    exportObject = {};
+                    data.forEach(item => {
+                        const key = item.taxiId || item.driverId || 'unknown';
+                        if (!exportObject[key]) exportObject[key] = [];
+                        exportObject[key].push(item);
+                    });
+                    if (includeMetadata) {
+                        exportObject = {
+                            metadata: {
+                                exportDate: new Date().toISOString(),
+                                totalRecords: data.length,
+                                groupCount: Object.keys(exportObject).length
+                            },
+                            groups: exportObject
+                        };
+                    }
+                }
+                
+                content = prettyPrint ? JSON.stringify(exportObject, null, 2) : JSON.stringify(exportObject);
+                filename = `tdrive-${dataType}-${timestamp}.json`;
+                mimeType = 'application/json';
+            } else if (format === 'csv') {
+                const fields = getSelectedFields();
+                const headers = fields.join(',');
+                const rows = data.map(item => fields.map(f => {
+                    const val = item[f];
+                    if (val === undefined || val === null) return '';
+                    if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
+                        return `"${val.replace(/"/g, '""')}"`;
+                    }
+                    if (typeof val === 'number') {
+                        return Number.isInteger(val) ? val : val.toFixed(4);
+                    }
+                    return val;
+                }).join(','));
+                content = [headers, ...rows].join('\n');
+                filename = `tdrive-${dataType}-${timestamp}.csv`;
+                mimeType = 'text/csv';
+            } else if (format === 'jsonl') {
+                content = data.map(item => JSON.stringify(item)).join('\n');
+                filename = `tdrive-${dataType}-${timestamp}.jsonl`;
+                mimeType = 'application/jsonl';
+            }
+            
+            // Download file
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+            log(`Експортовано ${data.length} записів у ${format.toUpperCase()} файл`, "success");
+            
+            // Close modal
+            document.getElementById('exportModal').classList.remove('active');
+        }
+
+        // ============================================================
+        // FILE HANDLING
+        // ============================================================
+
+        async function handleFiles(files) {
+            const progressBar = document.getElementById('progressBar');
+            const progressFill = document.getElementById('progressFill');
+            
+            progressBar.classList.remove('hidden');
+            progressFill.style.width = '0%';
+            
+            // Reset all data
+            simulatedDataStats = null;
+            simulatedData = [];
+            selectedDrivers.clear();
+            
+            log(`Завантаження ${files.length} файлів...`);
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                try {
+                    const content = await file.text();
+                    const parsed = parseGPSData(content, file.name);
+                    rawData.push(...parsed);
+                    
+                    progressFill.style.width = `${((i + 1) / files.length) * 50}%`;
+                } catch (e) {
+                    log(`Помилка: ${file.name}`, "error");
+                }
+            }
+            
+            log(`Завантажено ${rawData.length} точок GPS`);
+            
+            progressFill.style.width = '60%';
+            log("Розрахунок параметрів руху...");
+            
+            processedData = calculateMovementParameters(rawData);
+            
+            progressFill.style.width = '80%';
+            log("Класифікація стилів водіння...");
+            
+            processedData = classifyDrivingStyle(processedData);
+            
+            progressFill.style.width = '85%';
+            log("Аналіз характеристик датасету...");
+            
+            // Calculate dataset profile for adaptive simulation
+            calculateDatasetProfile();
+            
+            progressFill.style.width = '90%';
+            log("Генерація аугментованих даних...");
+            
+            augmentedData = augmentData(processedData);
+            
+            // Calculate and store real data statistics
+            calculateRealDataStats();
+            
+            progressFill.style.width = '100%';
+            
+            setTimeout(() => {
+                progressBar.classList.add('hidden');
+            }, 500);
+            
+            log(`Аналіз завершено: ${processedData.length} сегментів, ${Object.keys(driverAnalysis).length} водіїв`, "success");
+            
+            updateStats();
+            updateCharts();
+            updateDriversTable();
+            updateDetailedResults();
+            updateComparisonPanel();
+            
+            // Hide previous simulation info
+            document.getElementById('simulationInfo').style.display = 'none';
+            
+            document.getElementById('simulateBtn').disabled = false;
+            document.getElementById('generateDataBtn').disabled = false;
+            document.getElementById('exportBtn').disabled = false;
+        }
+
+        // ============================================================
+        // EVENT LISTENERS
+        // ============================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            initCharts();
+            initExportModal();
+            
+            // File upload
+            const uploadZone = document.getElementById('uploadZone');
+            const fileInput = document.getElementById('fileInput');
+            
+            uploadZone.addEventListener('click', () => fileInput.click());
+            
+            uploadZone.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadZone.classList.add('dragover');
+            });
+            
+            uploadZone.addEventListener('dragleave', () => {
+                uploadZone.classList.remove('dragover');
+            });
+            
+            uploadZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadZone.classList.remove('dragover');
+                handleFiles(e.dataTransfer.files);
+            });
+            
+            fileInput.addEventListener('change', (e) => {
+                handleFiles(e.target.files);
+            });
+            
+            // Sliders
+            document.getElementById('precipitation').addEventListener('input', (e) => {
+                document.getElementById('precipitationValue').textContent = `${e.target.value}%`;
+            });
+            
+            document.getElementById('traffic').addEventListener('input', (e) => {
+                document.getElementById('trafficValue').textContent = `${e.target.value}%`;
+            });
+            
+            document.getElementById('visibility').addEventListener('input', (e) => {
+                document.getElementById('visibilityValue').textContent = `${e.target.value}%`;
+            });
+            
+            // Buttons
+            document.getElementById('simulateBtn').addEventListener('click', runSimulation);
+            document.getElementById('generateDataBtn').addEventListener('click', generateExtendedDataset);
+            document.getElementById('exportBtn').addEventListener('click', () => {
+                document.getElementById('exportModal').classList.add('active');
+                updateExportCount();
+                updateExportPreview();
+            });
+            
+            // Tabs
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById(`${tab.dataset.tab}Tab`).classList.add('active');
+                });
+            });
+            
+            // Driver search
+            document.getElementById('driverSearch').addEventListener('input', updateDriversTable);
+            
+            // Select all checkbox
+            document.getElementById('selectAllDrivers').addEventListener('change', (e) => {
+                const checkboxes = document.querySelectorAll('.driver-checkbox');
+                checkboxes.forEach(cb => {
+                    cb.checked = e.target.checked;
+                    const driverId = cb.dataset.driverId;
+                    if (e.target.checked) {
+                        selectedDrivers.add(driverId);
+                    } else {
+                        selectedDrivers.delete(driverId);
+                    }
+                });
+                updateDeleteButton();
+            });
+            
+            // Delete buttons
+            document.getElementById('deleteSelectedBtn').addEventListener('click', confirmDeleteSelected);
+            document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+                document.getElementById('deleteConfirmModal').classList.remove('active');
+                driversToDelete = [];
+            });
+            document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+                deleteDrivers(driversToDelete);
+                document.getElementById('deleteConfirmModal').classList.remove('active');
+            });
+            
+            // Modals
+            document.getElementById('closeModal').addEventListener('click', () => {
+                document.getElementById('driverModal').classList.remove('active');
+            });
+            
+            document.getElementById('driverModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('driverModal')) {
+                    document.getElementById('driverModal').classList.remove('active');
+                }
+            });
+
+            // Export modal
+            document.getElementById('closeExportModal').addEventListener('click', () => {
+                document.getElementById('exportModal').classList.remove('active');
+            });
+            
+            document.getElementById('exportModal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('exportModal')) {
+                    document.getElementById('exportModal').classList.remove('active');
+                }
+            });
+
+            // Export format selection
+            document.querySelectorAll('#formatGroup .radio-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('#formatGroup .radio-item').forEach(i => i.classList.remove('selected'));
+                    item.classList.add('selected');
+                    item.querySelector('input[type="radio"]').checked = true;
+                    
+                    // Show/hide JSON structure options
+                    const structureGroup = document.getElementById('structureGroup');
+                    if (item.dataset.format === 'json') {
+                        structureGroup.parentElement.style.display = 'block';
+                    } else {
+                        structureGroup.parentElement.style.display = 'none';
+                    }
+                    
+                    updateExportPreview();
+                });
+            });
+
+            // Export data type selection
+            document.querySelectorAll('#dataTypeGroup .radio-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('#dataTypeGroup .radio-item').forEach(i => i.classList.remove('selected'));
+                    item.classList.add('selected');
+                    item.querySelector('input[type="radio"]').checked = true;
+                    updateExportFields(item.dataset.type);
+                    updateExportCount();
+                    updateExportPreview();
+                });
+            });
+
+            // JSON structure selection
+            document.querySelectorAll('#structureGroup .radio-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    document.querySelectorAll('#structureGroup .radio-item').forEach(i => i.classList.remove('selected'));
+                    item.classList.add('selected');
+                    item.querySelector('input[type="radio"]').checked = true;
+                    updateExportPreview();
+                });
+            });
+
+            // Export options
+            document.getElementById('includeMetadata').addEventListener('change', updateExportPreview);
+            document.getElementById('includeTimestamp').addEventListener('change', updateExportPreview);
+            document.getElementById('prettyPrint').addEventListener('change', updateExportPreview);
+            
+            document.getElementById('limitRecords').addEventListener('change', (e) => {
+                document.getElementById('recordLimitGroup').classList.toggle('hidden', !e.target.checked);
+                updateExportCount();
+                updateExportPreview();
+            });
+            
+            document.getElementById('recordLimit').addEventListener('input', () => {
+                updateExportCount();
+                updateExportPreview();
+            });
+
+            // Do export button
+            document.getElementById('doExportBtn').addEventListener('click', doExport);
+
+            // Comparison toggle
+            document.querySelectorAll('.comparison-toggle button').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('.comparison-toggle button').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const view = btn.dataset.view;
+                    if (view === 'overlay') {
+                        renderOverlayView();
+                    } else {
+                        updateComparisonPanel();
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
